@@ -1,0 +1,13 @@
+{
+  "name": "auctionboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "node server/index.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "test": "cd server && npm test",
+    "test:watch": "cd server && npm run test:watch"
+  }
+}
