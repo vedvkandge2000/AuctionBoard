@@ -18,7 +18,11 @@ No code changes needed. Atlas is just a different `MONGO_URI`. Set it in your `.
 
 ## Required environment variables
 
-Create `server/.env` on the EC2 instance with these values:
+> **Important:** The `.env` file must be created at **two locations** on the EC2 instance:
+> - `~/AuctionBoard/server/.env` — used when running the server directly
+> - `~/AuctionBoard/.env` — used by PM2 (it runs from the repo root, so `dotenv` resolves relative to there)
+>
+> The easiest approach is to create it once in `server/` then copy it to root (Step 8 below covers this).
 
 ```env
 # Runtime
@@ -33,8 +37,8 @@ MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/auctionboard?ret
 JWT_SECRET=your_strong_random_secret_here
 JWT_EXPIRES_IN=7d
 
-# Set to your domain once DNS is configured, otherwise use the EC2 public IP
-CLIENT_URL=https://yourdomain.com
+# Set to your EC2 public IP or domain once DNS is configured
+CLIENT_URL=http://<EC2-PUBLIC-IP>
 
 # Image storage
 # Option A — local disk (files stored in server/uploads/, persisted on EC2)
@@ -72,9 +76,12 @@ STORAGE_BACKEND=local
 
 ---
 
-### Step 2 — Connect and update the server
+### Step 2 — SSH into the instance
 
 ```bash
+# Fix permissions on the key file (required on first use)
+chmod 400 your-key.pem
+
 ssh -i your-key.pem ubuntu@<EC2-PUBLIC-IP>
 
 # Update packages
@@ -109,7 +116,7 @@ sudo apt install nginx -y
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_USERNAME/AuctionBoard.git
+git clone https://github.com/vedvkandge2000/AuctionBoard.git
 cd AuctionBoard
 ```
 
@@ -133,6 +140,7 @@ This generates `client/dist/` which Express serves in production.
 ```bash
 cd server
 npm install --omit=dev
+cd ..
 ```
 
 ---
@@ -140,19 +148,26 @@ npm install --omit=dev
 ### Step 8 — Configure environment variables
 
 ```bash
-# Still inside server/
+cd ~/AuctionBoard/server
 cp .env.example .env
 nano .env
 ```
 
-Fill in all values from the **Required environment variables** section above. Save with `Ctrl+O`, exit with `Ctrl+X`.
+Fill in all values (Atlas URI, JWT secret, CLIENT_URL with your EC2 IP). Save with `Ctrl+O` → Enter → `Ctrl+X`.
+
+**Then copy it to the repo root** — PM2 runs from there and dotenv resolves `.env` relative to the working directory:
+
+```bash
+cp ~/AuctionBoard/server/.env ~/AuctionBoard/.env
+```
+
+> Whenever you update `.env` in future, always update both files and run `pm2 restart auctionboard-server`.
 
 ---
 
 ### Step 9 — Start with PM2
 
 ```bash
-# From the repo root
 cd ~/AuctionBoard
 
 pm2 start ecosystem.config.js --env production
@@ -160,15 +175,26 @@ pm2 save
 
 # Auto-start PM2 on server reboot
 pm2 startup
-# Copy and run the command it prints (starts with sudo env PATH=...)
+# Copy and run the command it prints (starts with: sudo env PATH=...)
 ```
 
 Verify the app is running:
+
 ```bash
 pm2 status
+# Status column should show "online", not "errored"
+
 curl http://localhost:8000/api/health
 # Should return: {"status":"ok","timestamp":"..."}
 ```
+
+If status is `errored`, check logs immediately:
+
+```bash
+pm2 logs auctionboard-server --lines 50
+```
+
+Common causes: missing `.env` at repo root, wrong Atlas URI, Atlas IP not whitelisted.
 
 ---
 
@@ -178,12 +204,12 @@ curl http://localhost:8000/api/health
 sudo nano /etc/nginx/sites-available/auctionboard
 ```
 
-Paste this config (replace `yourdomain.com` with your domain or EC2 IP):
+Paste this config (replace the IP with your EC2 public IP or domain):
 
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name <EC2-PUBLIC-IP>;
 
     # Increase upload limit for player/team images
     client_max_body_size 10M;
@@ -211,67 +237,91 @@ Enable and test:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/auctionboard /etc/nginx/sites-enabled/
-sudo nginx -t          # should print "syntax is ok"
+sudo nginx -t          # must print "syntax is ok"
 sudo systemctl restart nginx
 sudo systemctl enable nginx
 ```
 
+Then open `http://<EC2-PUBLIC-IP>` in your browser — the React app should load.
+
 ---
 
-### Step 11 — (Recommended) Add SSL with Let's Encrypt
+### Step 11 — MongoDB Atlas network access
+
+In Atlas dashboard → **Network Access → Add IP Address**:
+- Add your EC2's **Public IPv4** (Elastic IP recommended — regular EC2 IPs change on reboot)
+- Or add `0.0.0.0/0` temporarily for testing (remove after)
+
+---
+
+### Step 12 — (Recommended) Add SSL with Let's Encrypt
+
+Requires a domain name pointing to your EC2 IP first (set an A record in your DNS provider).
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
 
-# Replace with your actual domain (must have DNS pointing to this EC2 IP first)
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
 Certbot auto-updates the Nginx config to handle HTTPS and redirects HTTP → HTTPS.
 
-Set up auto-renewal:
 ```bash
-sudo certbot renew --dry-run   # test renewal
-# Renewal runs automatically via systemd timer — no cron needed
+sudo certbot renew --dry-run   # test auto-renewal works
 ```
 
-After SSL is set up, update your `.env`:
+After SSL is set up, update both `.env` files:
+
 ```env
 CLIENT_URL=https://yourdomain.com
 ```
 
-Then restart PM2:
 ```bash
 pm2 restart auctionboard-server
 ```
 
 ---
 
-### Step 12 — MongoDB Atlas network access
+## Redeploying new changes
 
-In Atlas dashboard → **Network Access → Add IP Address**:
-- Add your EC2's **Public IPv4** (static Elastic IP recommended so it doesn't change on reboot)
-- Or add `0.0.0.0/0` temporarily for testing (remove after)
+Run these on the EC2 instance whenever you push new code.
 
----
-
-## Updating the deployment
+### Backend-only changes (controllers, models, services)
 
 ```bash
 cd ~/AuctionBoard
-
 git pull
-
-# Rebuild client if frontend changed
-cd client && npm install && npm run build && cd ..
-
-# Install any new server deps
 cd server && npm install --omit=dev && cd ..
-
-# Restart server
 pm2 restart auctionboard-server
+pm2 logs auctionboard-server --lines 20
+```
 
-pm2 logs auctionboard-server   # watch logs
+### Frontend-only changes (React components, pages, styles)
+
+```bash
+cd ~/AuctionBoard
+git pull
+cd client && npm install && npm run build && cd ..
+pm2 restart auctionboard-server   # restarts Express so it serves the new build
+```
+
+### Both frontend and backend changed
+
+```bash
+cd ~/AuctionBoard
+git pull
+cd client && npm install && npm run build && cd ..
+cd server && npm install --omit=dev && cd ..
+pm2 restart auctionboard-server
+pm2 logs auctionboard-server --lines 20
+```
+
+### Environment variable changed
+
+```bash
+nano ~/AuctionBoard/server/.env       # edit the value
+cp ~/AuctionBoard/server/.env ~/AuctionBoard/.env   # sync to root
+pm2 restart auctionboard-server
 ```
 
 ---
@@ -279,22 +329,28 @@ pm2 logs auctionboard-server   # watch logs
 ## Useful PM2 commands
 
 ```bash
-pm2 status                        # process list
-pm2 logs auctionboard-server      # live logs
-pm2 logs auctionboard-server --lines 100  # last 100 lines
-pm2 restart auctionboard-server   # restart after code change
-pm2 stop auctionboard-server      # stop
-pm2 delete auctionboard-server    # remove from PM2
+pm2 status                                  # process list and health
+pm2 logs auctionboard-server               # live log stream
+pm2 logs auctionboard-server --lines 50    # last 50 lines
+pm2 logs auctionboard-server --err         # errors only
+pm2 restart auctionboard-server            # restart after code/env change
+pm2 stop auctionboard-server               # stop without removing
+pm2 delete auctionboard-server             # remove from PM2 entirely
+pm2 save                                    # persist current process list across reboots
 ```
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Check |
-|---------|-------|
-| `502 Bad Gateway` | PM2 process crashed — run `pm2 logs` |
-| WebSockets not connecting | Nginx missing `Upgrade`/`Connection` headers — verify the proxy config |
-| `CORS error` in browser | `CLIENT_URL` in `.env` doesn't match the actual URL the browser uses |
-| Atlas connection refused | EC2 IP not in Atlas Network Access allowlist |
-| Images not loading | `server/uploads/` permissions — run `chmod 755 ~/AuctionBoard/server/uploads` |
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| PM2 status `errored`, server won't start | `.env` missing at repo root | `cp server/.env .env` then `pm2 restart` |
+| `injected env (0) from .env` in logs | `.env` at repo root is empty or missing | Same as above — check both `.env` files exist and have content |
+| `502 Bad Gateway` in browser | PM2 process crashed | `pm2 logs` to find the error |
+| `curl localhost:8000/api/health` fails | Server not running on port 8000 | `pm2 status` — if errored, fix `.env` and restart |
+| WebSockets not connecting | Nginx missing upgrade headers | Verify Nginx config has `Upgrade` and `Connection` headers |
+| `CORS error` in browser | `CLIENT_URL` doesn't match browser URL | Update `CLIENT_URL` in both `.env` files, restart PM2 |
+| Browser can't reach EC2 IP at all | Port 80 not open in Security Group | AWS Console → EC2 → Security Group → add inbound rule port 80 |
+| Atlas connection refused | EC2 IP not whitelisted | Atlas → Network Access → add EC2 public IP |
+| Images not loading | Uploads folder permissions | `chmod 755 ~/AuctionBoard/server/uploads` |
