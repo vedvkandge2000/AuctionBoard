@@ -7,7 +7,7 @@ const CONFIG_FIELDS = [
   'playerRoles', 'currency', 'currencySymbol', 'currencyUnit',
   'defaultPursePerTeam', 'minSquadSize', 'maxSquadSize', 'maxOverseasPlayers',
   'minMalePlayers', 'minFemalePlayers', 'bidIncrementTiers',
-  'rtmEnabled', 'rtmCardsPerTeam',
+  'rtmEnabled', 'rtmCardsPerTeam', 'playerCategories', 'categoryBasePrices',
 ];
 
 // List all templates (any authenticated user — needed for auction creation dropdown)

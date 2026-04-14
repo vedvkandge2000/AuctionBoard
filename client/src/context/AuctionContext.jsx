@@ -7,7 +7,10 @@ const initialState = {
   auction: null,
   teams: [],
   bidHistory: [],
-  rtmPrompt: null,   // { player, winningBid, expiresAt } or null
+  teamMaxBids: {},       // { [teamId]: maxBid } — updated each time a new player goes live
+  rtmPrompt: null,       // { player, winningBid, expiresAt } or null
+  squadRefreshAt: null,  // bumped when a player is released — triggers squad panel refetch
+  releaseRequests: [],   // pending release requests (live, via socket)
   connected: false,
 };
 
@@ -20,6 +23,7 @@ const reducer = (state, action) => {
         ...state,
         auction: { ...state.auction, currentPlayerId: action.player, currentBid: action.basePrice, currentBidTeamId: null },
         bidHistory: [],
+        teamMaxBids: action.teamMaxBids || {},
       };
     case 'BID_PLACED':
       return {
@@ -30,12 +34,24 @@ const reducer = (state, action) => {
     case 'SOLD':
       return {
         ...state,
-        auction: { ...state.auction, currentPlayerId: null, currentBid: 0, currentBidTeamId: null },
+        auction: {
+          ...state.auction,
+          currentPlayerId: null,
+          currentBid: 0,
+          currentBidTeamId: null,
+          soldPlayerIds: [...(state.auction?.soldPlayerIds || []), action.player?._id].filter(Boolean),
+        },
       };
     case 'UNSOLD':
       return {
         ...state,
-        auction: { ...state.auction, currentPlayerId: null, currentBid: 0, currentBidTeamId: null },
+        auction: {
+          ...state.auction,
+          currentPlayerId: null,
+          currentBid: 0,
+          currentBidTeamId: null,
+          unsoldPlayerIds: [...(state.auction?.unsoldPlayerIds || []), action.player?._id].filter(Boolean),
+        },
       };
     case 'AUCTION_STATUS':
       return { ...state, auction: { ...state.auction, status: action.status } };
@@ -44,6 +60,28 @@ const reducer = (state, action) => {
         t._id === action.teamId ? { ...t, remainingPurse: action.remainingPurse } : t
       );
       return { ...state, teams: updatedTeams };
+    }
+    case 'PLAYER_RELEASED': {
+      const updatedTeams = state.teams.map((t) =>
+        t._id === action.teamId ? { ...t, remainingPurse: action.remainingPurse } : t
+      );
+      // Remove approved request from pending list
+      const remainingRequests = state.releaseRequests.filter(
+        (r) => !(r.playerId?._id === action.playerId?.toString() || r.playerId === action.playerId)
+      );
+      return { ...state, teams: updatedTeams, squadRefreshAt: Date.now(), releaseRequests: remainingRequests };
+    }
+    case 'ROUND_ADVANCED':
+      return { ...state, auction: { ...state.auction, currentRound: action.round, unsoldPlayerIds: [] } };
+    case 'RELEASE_REQUESTED':
+      return { ...state, releaseRequests: [action.request, ...state.releaseRequests] };
+    case 'RELEASE_APPROVED': {
+      const remaining = state.releaseRequests.filter((r) => r._id !== action.request._id);
+      return { ...state, releaseRequests: remaining, squadRefreshAt: Date.now() };
+    }
+    case 'RELEASE_REJECTED': {
+      const remaining = state.releaseRequests.filter((r) => r._id !== action.request._id);
+      return { ...state, releaseRequests: remaining };
     }
     case 'SET_TEAMS':
       return { ...state, teams: action.teams };
@@ -75,10 +113,10 @@ export const AuctionProvider = ({ auctionId, initialTeams = [], children }) => {
     socket.on('connect', () => dispatch({ type: 'CONNECTED' }));
     socket.on('disconnect', () => dispatch({ type: 'DISCONNECTED' }));
     socket.on('auction:state_update', ({ auction }) => dispatch({ type: 'STATE_UPDATE', auction }));
-    socket.on('auction:player_live', ({ player, basePrice }) => dispatch({ type: 'PLAYER_LIVE', player, basePrice }));
+    socket.on('auction:player_live', ({ player, basePrice, teamMaxBids }) => dispatch({ type: 'PLAYER_LIVE', player, basePrice, teamMaxBids }));
     socket.on('auction:bid_placed', (data) => dispatch({ type: 'BID_PLACED', ...data }));
-    socket.on('auction:sold', () => dispatch({ type: 'SOLD' }));
-    socket.on('auction:unsold', () => dispatch({ type: 'UNSOLD' }));
+    socket.on('auction:sold', (data) => dispatch({ type: 'SOLD', player: data?.player }));
+    socket.on('auction:unsold', (data) => dispatch({ type: 'UNSOLD', player: data?.player }));
     socket.on('auction:paused', () => dispatch({ type: 'AUCTION_STATUS', status: 'paused' }));
     socket.on('auction:resumed', () => dispatch({ type: 'AUCTION_STATUS', status: 'live' }));
     socket.on('auction:ended', () => dispatch({ type: 'AUCTION_STATUS', status: 'completed' }));
@@ -86,6 +124,11 @@ export const AuctionProvider = ({ auctionId, initialTeams = [], children }) => {
     socket.on('team:rtm_prompt', (prompt) => dispatch({ type: 'RTM_PROMPT', prompt }));
     socket.on('team:rtm_expired', () => dispatch({ type: 'RTM_CLEAR' }));
     socket.on('bid:error', ({ message }) => dispatch({ type: 'BID_ERROR', message }));
+    socket.on('auction:player_released', (data) => dispatch({ type: 'PLAYER_RELEASED', ...data }));
+    socket.on('auction:round_advanced', ({ round }) => dispatch({ type: 'ROUND_ADVANCED', round }));
+    socket.on('auction:release_requested', ({ request }) => dispatch({ type: 'RELEASE_REQUESTED', request }));
+    socket.on('auction:release_approved', ({ request }) => dispatch({ type: 'RELEASE_APPROVED', request }));
+    socket.on('auction:release_rejected', ({ request }) => dispatch({ type: 'RELEASE_REJECTED', request }));
 
     socket.emit('auction:join', { auctionId });
 
@@ -104,6 +147,11 @@ export const AuctionProvider = ({ auctionId, initialTeams = [], children }) => {
       socket.off('team:rtm_prompt');
       socket.off('team:rtm_expired');
       socket.off('bid:error');
+      socket.off('auction:player_released');
+      socket.off('auction:round_advanced');
+      socket.off('auction:release_requested');
+      socket.off('auction:release_approved');
+      socket.off('auction:release_rejected');
     };
   }, [auctionId]);
 

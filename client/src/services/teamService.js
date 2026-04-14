@@ -25,6 +25,11 @@ export const getSquad = async (auctionId, teamId) => {
   return data.team;
 };
 
+export const listTeamsWithSquads = async (auctionId) => {
+  const { data } = await api.get(`/auctions/${auctionId}/teams?squads=1`);
+  return data.teams;
+};
+
 export const exerciseRTM = async (auctionId, teamId) => {
   const { data } = await api.post(`/auctions/${auctionId}/teams/${teamId}/rtm`);
   return data;

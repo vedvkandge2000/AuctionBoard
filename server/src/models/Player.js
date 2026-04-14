@@ -11,6 +11,7 @@ const playerSchema = new mongoose.Schema(
     basePrice: { type: Number, required: true, min: 0 }, // in auction's currency unit (e.g. lakhs)
     photoUrl: { type: String, default: '' },
     stats: { type: mongoose.Schema.Types.Mixed, default: {} },
+    category: { type: String, default: null },  // auction-defined; e.g. 'A+', 'Gold', 'Open'
     status: { type: String, enum: ['pool', 'live', 'sold', 'unsold'], default: 'pool' },
     soldToTeamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
     finalPrice: { type: Number, default: null },

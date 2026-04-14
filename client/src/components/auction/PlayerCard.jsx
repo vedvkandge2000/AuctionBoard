@@ -2,11 +2,16 @@ import Badge from '../ui/Badge';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 const ROLE_ICONS = {
+  // Badminton roles
+  Singles: '🏸',
+  Doubles: '🤝',
+  'All-Rounder': '⚡',
+  // Cricket roles (legacy)
   Batsman: '🏏',
   Bowler: '🎯',
-  'All-Rounder': '⭐',
   'Wicket-Keeper': '🧤',
 };
+
 
 const StatPill = ({ label, value }) => (
   <div className='bg-gray-800 rounded-lg px-3 py-2 text-center'>
@@ -44,6 +49,11 @@ const PlayerCard = ({ player, auction }) => {
           <span className='text-7xl'>{ROLE_ICONS[player.role] || (player.gender ? '🏸' : '👤')}</span>
         )}
         <div className='absolute top-3 right-3 flex flex-col gap-1 items-end'>
+          {player.category && (
+            <span className='bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow'>
+              {player.category}
+            </span>
+          )}
           {player.gender ? (
             <Badge variant={player.gender === 'female' ? 'pink' : 'blue'}>
               {player.gender === 'female' ? '♀ Female' : '♂ Male'}

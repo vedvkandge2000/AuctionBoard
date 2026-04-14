@@ -1,4 +1,5 @@
-require('dotenv').config();
+// Always load .env from the repo root, regardless of CWD or how the server is started
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const http = require('http');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');

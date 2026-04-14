@@ -42,11 +42,18 @@ describe('POST /api/auctions', () => {
 });
 
 describe('GET /api/auctions', () => {
-  test('returns auction list for authenticated users', async () => {
+  test('admin sees only their own auctions', async () => {
+    const res = await request(app).get('/api/auctions').set(adminHeader);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.auctions)).toBe(true);
+    expect(res.body.auctions.length).toBe(1); // auction was created by this admin
+  });
+
+  test('team owner sees only auctions where they have a team (none here)', async () => {
     const res = await request(app).get('/api/auctions').set(ownerHeader);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.auctions)).toBe(true);
-    expect(res.body.auctions.length).toBe(1);
+    expect(res.body.auctions.length).toBe(0); // owner has no team yet
   });
 });
 

@@ -20,7 +20,7 @@ const NavItem = ({ to, icon, label, end: endProp }) => (
 
 const Sidebar = () => {
   const { id: auctionId } = useParams();
-  const { isAdmin, isTeamOwner, user } = useAuth();
+  const { isAdmin, isTeamOwner } = useAuth();
 
   return (
     <aside className='w-56 flex-shrink-0 hidden md:flex flex-col gap-1 p-3 border-r border-gray-800'>
@@ -35,12 +35,7 @@ const Sidebar = () => {
           <NavItem to={`/auction/${auctionId}/players`} icon='👤' label='Players' />
           <NavItem to={`/auction/${auctionId}/teams`} icon='🛡️' label='Teams' />
           {isAdmin && <NavItem to={`/auction/${auctionId}/config`} icon='⚙️' label='Config' />}
-          {isTeamOwner && !user?.teamId && (
-            <NavItem to={`/auction/${auctionId}/teams`} icon='➕' label='Create My Team' />
-          )}
-          {isTeamOwner && user?.teamId && (
-            <NavItem to='/my-squad' icon='📋' label='My Squad' end />
-          )}
+          {isTeamOwner && <NavItem to={`/auction/${auctionId}/my-squad`} icon='📋' label='My Squad' end />}
         </>
       )}
     </aside>

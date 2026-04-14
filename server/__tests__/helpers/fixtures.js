@@ -14,7 +14,6 @@ const createAdminUser = async (overrides = {}) => {
     email: 'admin@test.com',
     passwordHash: pw,
     role: 'admin',
-    approvalStatus: 'approved',
     ...overrides,
   });
 };
@@ -26,11 +25,12 @@ const createTeamOwnerUser = async (overrides = {}) => {
     email: 'owner@test.com',
     passwordHash: pw,
     role: 'team_owner',
-    approvalStatus: 'approved',
     ...overrides,
   });
 };
 
+// Kept for backward compatibility — team owners no longer have a global pending state
+// but tests that need a team_owner user can still use this
 const createPendingOwner = async (overrides = {}) => {
   const pw = await bcrypt.hash('Password1!', 10);
   return User.create({
@@ -38,13 +38,12 @@ const createPendingOwner = async (overrides = {}) => {
     email: 'pending@test.com',
     passwordHash: pw,
     role: 'team_owner',
-    approvalStatus: 'pending',
     ...overrides,
   });
 };
 
 const getAuthHeader = (user) => {
-  const token = jwt.sign({ id: user._id, role: user.role, teamId: user.teamId || null }, JWT_SECRET, { expiresIn: '1d' });
+  const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
   return { Authorization: `Bearer ${token}` };
 };
 

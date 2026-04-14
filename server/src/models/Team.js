@@ -21,6 +21,7 @@ const teamSchema = new mongoose.Schema(
     remainingPurse: { type: Number, required: true },
     rtmCardsRemaining: { type: Number, default: 0 },
     players: [squadPlayerSchema],
+    releasedPlayerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],
   },
   { timestamps: true }
 );

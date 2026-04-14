@@ -40,6 +40,9 @@ const auctionSchema = new mongoose.Schema(
       ],
     },
 
+    // Auction mode
+    mode: { type: String, enum: ['online', 'offline'], default: 'online' },
+
     // RTM
     rtmEnabled: { type: Boolean, default: false },
     rtmCardsPerTeam: { type: Number, default: 1 },
@@ -50,11 +53,21 @@ const auctionSchema = new mongoose.Schema(
       default: ['Batsman', 'Bowler', 'All-Rounder', 'Wicket-Keeper'],
     },
 
+    // Admin-defined player categories (e.g. ['A+','A','B','F+','F'] for badminton, ['Gold','Silver'] etc.)
+    // Order here defines the auction sequence.
+    playerCategories: { type: [String], default: [] },
+
+    // Base price per category (map of categoryName → price in currencyUnit)
+    categoryBasePrices: { type: mongoose.Schema.Types.Mixed, default: {} },
+
     // Live auction state (denormalized for fast reads)
     currentPlayerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', default: null },
     currentBid: { type: Number, default: 0 },
     currentBidTeamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
     bidStartedAt: { type: Date, default: null },
+
+    // Round tracking
+    currentRound: { type: Number, default: 1 },
 
     // Player ordering & outcomes
     auctionOrder: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }],

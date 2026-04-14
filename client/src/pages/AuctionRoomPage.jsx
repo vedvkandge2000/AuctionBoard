@@ -7,15 +7,18 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PlayerCard from '../components/auction/PlayerCard';
 import BidPanel from '../components/auction/BidPanel';
+import OfflineBidPanel from '../components/auction/OfflineBidPanel';
 import BidHistory from '../components/auction/BidHistory';
 import TeamBudgetRail from '../components/auction/TeamBudgetRail';
 import AuctionStatusBanner from '../components/auction/AuctionStatusBanner';
 import AuctionControls from '../components/auction/AuctionControls';
 import RTMPrompt from '../components/auction/RTMPrompt';
+import TeamSquadPanel from '../components/auction/TeamSquadPanel';
+import MySquadPanel from '../components/auction/MySquadPanel';
 import Spinner from '../components/ui/Spinner';
 import { useState, useEffect } from 'react';
 
-const AuctionRoomInner = ({ initialAuction, teams, refetch }) => {
+const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
   const { auction, bidHistory, placeBid, lastBidError, dispatch } = useAuction();
   const { isAdmin, isTeamOwner, user } = useAuth();
   const { addToast } = useToast();
@@ -30,7 +33,8 @@ const AuctionRoomInner = ({ initialAuction, teams, refetch }) => {
   }, [lastBidError]);
 
   const liveAuction = auction || initialAuction;
-  const myTeam = isTeamOwner ? teams.find((t) => t._id === user?.teamId) : null;
+  // Find the current user's team in this auction by ownerId (no longer stored in JWT)
+  const myTeam = isTeamOwner ? teams.find((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id) : null;
 
   const handleBid = async (amount) => {
     setBidPending(true);
@@ -57,16 +61,21 @@ const AuctionRoomInner = ({ initialAuction, teams, refetch }) => {
 
         {/* Right: Bid panel + history */}
         <div className='lg:col-span-1 space-y-4'>
-          <BidPanel
-            auction={liveAuction}
-            myTeam={myTeam}
-            onBid={handleBid}
-            bidPending={bidPending}
-          />
+          {isAdmin && liveAuction?.mode === 'offline' && (
+            <OfflineBidPanel auction={liveAuction} teams={teams} />
+          )}
+          {isTeamOwner && liveAuction?.mode !== 'offline' && (
+            <BidPanel
+              auction={liveAuction}
+              myTeam={myTeam}
+              onBid={handleBid}
+              bidPending={bidPending}
+            />
+          )}
           <BidHistory history={bidHistory} auction={liveAuction} />
         </div>
 
-        {/* Right col: Admin controls + team budgets */}
+        {/* Right col: Admin controls + team budgets + squad panels */}
         <div className='lg:col-span-1 space-y-4'>
           {isAdmin && (
             <AuctionControls auction={liveAuction} onUpdate={refetch} />
@@ -74,8 +83,14 @@ const AuctionRoomInner = ({ initialAuction, teams, refetch }) => {
           <TeamBudgetRail
             teams={teams}
             auction={liveAuction}
-            myTeamId={user?.teamId}
+            myTeamId={myTeam?._id}
           />
+          {isAdmin && (
+            <TeamSquadPanel auctionId={liveAuction._id} auction={liveAuction} />
+          )}
+          {isTeamOwner && myTeam && (
+            <MySquadPanel auctionId={liveAuction._id} auction={liveAuction} myTeam={myTeam} />
+          )}
         </div>
       </div>
 

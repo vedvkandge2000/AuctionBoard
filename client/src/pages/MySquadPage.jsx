@@ -1,6 +1,7 @@
+import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../context/AuthContext';
-import { getMyTeam } from '../services/authService';
+import { getMyTeams } from '../services/authService';
+import api from '../services/api';
 import { formatCurrency, formatShort } from '../utils/formatCurrency';
 import Spinner from '../components/ui/Spinner';
 import Badge from '../components/ui/Badge';
@@ -14,40 +15,9 @@ const ROLE_COLOR_MAP = {
 };
 const getRoleColor = (role) => ROLE_COLOR_MAP[role] || 'indigo';
 
-const MySquadPage = () => {
-  const { user } = useAuth();
-  const { data: team, isLoading, isError } = useQuery({
-    queryKey: ['my-team'],
-    queryFn: getMyTeam,
-    enabled: !!user?.teamId,
-  });
-
-  if (!user?.teamId) {
-    return (
-      <div className='p-6 max-w-2xl mx-auto'>
-        <EmptyState
-          icon='🛡️'
-          title='No team yet'
-          description="You haven't created or been assigned a team. Go to an auction's Teams page to create your team."
-        />
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return <div className='flex justify-center items-center h-64'><Spinner size='lg' /></div>;
-  }
-
-  if (isError || !team) {
-    return (
-      <div className='p-6 max-w-2xl mx-auto'>
-        <EmptyState icon='⚠️' title='Could not load team' description='Try refreshing the page.' />
-      </div>
-    );
-  }
-
-  const symbol = '₹';
-  const unit = 'lakh';
+const SquadView = ({ team }) => {
+  const symbol = team.auctionId?.currencySymbol || '₹';
+  const unit = team.auctionId?.currencyUnit || 'lakh';
   const pct = team.initialPurse > 0 ? Math.round((team.remainingPurse / team.initialPurse) * 100) : 0;
   const spent = team.initialPurse - team.remainingPurse;
 
@@ -59,7 +29,7 @@ const MySquadPage = () => {
   }, {});
 
   return (
-    <div className='p-6 max-w-3xl mx-auto animate-fade-in'>
+    <>
       {/* Header */}
       <div className='flex items-center gap-4 mb-6'>
         {team.logoUrl && (
@@ -67,7 +37,7 @@ const MySquadPage = () => {
         )}
         <div>
           <div className='flex items-center gap-2'>
-            <h1 className='text-2xl font-bold text-white'>{team.name}</h1>
+            <h2 className='text-2xl font-bold text-white'>{team.name}</h2>
             <span className='text-xs bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full'>{team.shortName}</span>
           </div>
           <p className='text-gray-400 text-sm mt-0.5'>My Squad</p>
@@ -159,6 +129,56 @@ const MySquadPage = () => {
           ))}
         </div>
       )}
+    </>
+  );
+};
+
+const MySquadPage = () => {
+  const { id: auctionId } = useParams();
+
+  // If accessed from /auction/:id/my-squad — load just this auction's team
+  // If accessed from /my-squad (legacy) — load all teams and let user pick
+  const { data: team, isLoading, isError } = useQuery({
+    queryKey: ['my-team', auctionId],
+    queryFn: async () => {
+      const { data } = await api.get('/auth/me/team', { params: { auctionId } });
+      return data.team || null;
+    },
+    enabled: !!auctionId,
+  });
+
+  if (isLoading) {
+    return <div className='flex justify-center items-center h-64'><Spinner size='lg' /></div>;
+  }
+
+  if (isError) {
+    return (
+      <div className='max-w-2xl mx-auto'>
+        <EmptyState icon='⚠️' title='Could not load squad' description='Try refreshing the page.' />
+      </div>
+    );
+  }
+
+  if (!team) {
+    return (
+      <div className='max-w-2xl mx-auto'>
+        <EmptyState
+          icon='🛡️'
+          title='No team yet'
+          description="You don't have a team in this auction yet."
+          action={
+            <Link to={`/auction/${auctionId}/teams`} className='text-indigo-400 hover:text-indigo-300 text-sm underline'>
+              Go to Teams page
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className='max-w-3xl mx-auto animate-fade-in'>
+      <SquadView team={team} />
     </div>
   );
 };

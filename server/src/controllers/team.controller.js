@@ -1,22 +1,40 @@
 const Team = require('../models/Team');
 const Auction = require('../models/Auction');
 const Player = require('../models/Player');
-const User = require('../models/User');
+const AuctionMembership = require('../models/AuctionMembership');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
+const requireAuctionOwner = require('../utils/requireAuctionOwner');
 
 // List teams for an auction
+// ?squads=1 (admin only) — include squad with populated player docs
 const listTeams = asyncHandler(async (req, res) => {
-  const teams = await Team.find({ auctionId: req.params.id })
-    .populate('ownerId', 'name email')
-    .select('-players');
+  let query = Team.find({ auctionId: req.params.id }).populate('ownerId', 'name email');
+  if (req.query.squads === '1' && req.user.role === 'admin') {
+    query = query.populate('players.playerId', 'name role category gender');
+  } else {
+    query = query.select('-players -releasedPlayerIds');
+  }
+  const teams = await query;
   res.json({ success: true, teams });
 });
 
 // Create team
 const createTeam = asyncHandler(async (req, res) => {
-  const auction = await Auction.findById(req.params.id);
-  if (!auction) throw new ApiError(404, 'Auction not found');
+  let auction;
+  if (req.user.role === 'admin') {
+    auction = await requireAuctionOwner(req.params.id, req.user.id);
+  } else {
+    auction = await Auction.findById(req.params.id);
+    if (!auction) throw new ApiError(404, 'Auction not found');
+    // Team owners must have an approved membership for this auction
+    const membership = await AuctionMembership.findOne({
+      userId: req.user.id,
+      auctionId: req.params.id,
+      status: 'approved',
+    });
+    if (!membership) throw new ApiError(403, 'You must be an approved member of this auction to create a team');
+  }
 
   // Team owners automatically become the owner; admins can specify an ownerId
   const ownerId = req.user.role === 'team_owner' ? req.user.id : (req.body.ownerId || null);
@@ -44,17 +62,13 @@ const createTeam = asyncHandler(async (req, res) => {
     rtmCardsRemaining: rtmCards,
   });
 
-  // Link team to owner user
-  if (ownerId) {
-    await User.findByIdAndUpdate(ownerId, { teamId: team._id });
-  }
-
   res.status(201).json({ success: true, team });
 });
 
 // Update team
 const TEAM_UPDATE_ALLOWED = ['name', 'shortName', 'logoUrl', 'colorHex', 'ownerId', 'initialPurse', 'remainingPurse', 'rtmCardsRemaining'];
 const updateTeam = asyncHandler(async (req, res) => {
+  await requireAuctionOwner(req.params.id, req.user.id);
   const updates = {};
   TEAM_UPDATE_ALLOWED.forEach((key) => { if (req.body[key] !== undefined) updates[key] = req.body[key]; });
 
@@ -65,34 +79,22 @@ const updateTeam = asyncHandler(async (req, res) => {
   );
   if (!team) throw new ApiError(404, 'Team not found');
 
-  // Re-link owner if changed
-  if (updates.ownerId) {
-    await User.findByIdAndUpdate(updates.ownerId, { teamId: team._id });
-  }
-
   res.json({ success: true, team });
 });
 
 // Delete team
 const deleteTeam = asyncHandler(async (req, res) => {
+  await requireAuctionOwner(req.params.id, req.user.id);
   const team = await Team.findOneAndDelete({ _id: req.params.tid, auctionId: req.params.id });
   if (!team) throw new ApiError(404, 'Team not found');
   res.json({ success: true, message: 'Team deleted' });
 });
 
-// Get team squad
+// Get team squad — any authenticated user can view any squad (read-only)
 const getSquad = asyncHandler(async (req, res) => {
-  const { tid } = req.params;
-  const { role: userRole, teamId: userTeamId } = req.user;
-
-  // Team owners can only see their own squad
-  if (userRole === 'team_owner' && userTeamId?.toString() !== tid) {
-    throw new ApiError(403, 'You can only view your own squad');
-  }
-
-  const team = await Team.findOne({ _id: tid, auctionId: req.params.id }).populate('players.playerId');
+  const team = await Team.findOne({ _id: req.params.tid, auctionId: req.params.id })
+    .populate('players.playerId');
   if (!team) throw new ApiError(404, 'Team not found');
-
   res.json({ success: true, team });
 });
 

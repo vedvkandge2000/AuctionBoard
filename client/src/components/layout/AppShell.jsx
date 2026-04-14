@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import Footer from './Footer';
 
 const AppShell = () => (
   <div className='min-h-screen bg-gray-950 flex flex-col'>
@@ -11,6 +12,7 @@ const AppShell = () => (
         <Outlet />
       </main>
     </div>
+    <Footer />
   </div>
 );
 

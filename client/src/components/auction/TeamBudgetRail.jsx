@@ -1,5 +1,18 @@
 import { formatShort } from '../../utils/formatCurrency';
 
+const getBudgetChipStyle = (pct, colorHex, isMe) => {
+  const bgTint = pct <= 25
+    ? 'rgba(239,68,68,0.08)'
+    : pct <= 60
+      ? 'rgba(234,179,8,0.06)'
+      : undefined;
+  return {
+    borderLeftColor: colorHex,
+    borderLeftWidth: 3,
+    backgroundColor: isMe ? undefined : bgTint, // don't override isMe indigo highlight
+  };
+};
+
 const TeamBudgetRail = ({ teams = [], auction, myTeamId }) => {
   const symbol = auction?.currencySymbol || '₹';
   const unit = auction?.currencyUnit || 'lakh';
@@ -21,7 +34,7 @@ const TeamBudgetRail = ({ teams = [], auction, myTeamId }) => {
                   ? 'border-indigo-500 bg-indigo-900/30'
                   : 'border-gray-700 bg-gray-800'
               }`}
-              style={{ borderLeftColor: team.colorHex, borderLeftWidth: 3 }}
+              style={getBudgetChipStyle(pct, team.colorHex, isMe)}
             >
               {team.logoUrl && (
                 <img src={team.logoUrl} alt='' className='h-5 w-5 rounded-full object-cover' />

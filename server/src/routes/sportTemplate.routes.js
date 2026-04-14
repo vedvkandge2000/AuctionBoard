@@ -12,7 +12,7 @@ const {
 
 const router = express.Router();
 
-router.get('/', protect, listTemplates);
+router.get('/', listTemplates);                                          // public — player registration needs this
 router.get('/:id', protect, getTemplate);
 router.post('/', protect, requireRole('admin'), createTemplate);
 router.patch('/:id', protect, requireRole('admin'), updateTemplate);

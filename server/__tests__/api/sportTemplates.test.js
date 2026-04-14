@@ -28,9 +28,10 @@ describe('GET /api/sport-templates', () => {
     expect(sports).toContain('badminton');
   });
 
-  test('rejects unauthenticated request', async () => {
+  test('allows unauthenticated request (public endpoint for player registration)', async () => {
     const res = await request(app).get('/api/sport-templates');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.templates)).toBe(true);
   });
 });
 

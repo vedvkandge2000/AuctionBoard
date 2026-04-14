@@ -6,7 +6,7 @@ import Button from '../ui/Button';
 
 const BidPanel = ({ auction, myTeam, onBid, bidPending }) => {
   const { isAdmin, isTeamOwner } = useAuth();
-  const { currentBid, currentBidTeamId } = useAuction();
+  const { currentBid, currentBidTeamId, teamMaxBids } = useAuction();
 
   if (!auction?.currentPlayerId) return null;
 
@@ -15,7 +15,9 @@ const BidPanel = ({ auction, myTeam, onBid, bidPending }) => {
   const tiers = auction.bidIncrementTiers || [];
   const nextBid = calcNextBid(currentBid || auction.currentPlayerId?.basePrice || 0, tiers);
   const isMyTeamLeading = currentBidTeamId && myTeam && currentBidTeamId._id === myTeam._id;
-  const canBid = isTeamOwner && myTeam && auction.status === 'live' && !isMyTeamLeading;
+  const myMaxBid = myTeam ? (teamMaxBids[myTeam._id] ?? Infinity) : Infinity;
+  const bidExceedsMax = nextBid > myMaxBid;
+  const canBid = isTeamOwner && myTeam && auction.status === 'live' && !isMyTeamLeading && !bidExceedsMax;
 
   return (
     <div className='bg-gray-900 rounded-2xl border border-gray-700 p-5 space-y-4'>
@@ -32,12 +34,21 @@ const BidPanel = ({ auction, myTeam, onBid, bidPending }) => {
         )}
       </div>
 
+      {/* Max bid indicator for team owners */}
+      {isTeamOwner && myTeam && myMaxBid !== Infinity && (
+        <div className={`text-center text-xs px-3 py-1.5 rounded-lg ${bidExceedsMax ? 'bg-red-900/30 text-red-400' : 'bg-gray-800 text-gray-400'}`}>
+          Max bid: {formatCurrency(myMaxBid, symbol, unit)}
+          {bidExceedsMax && ' — budget limit reached'}
+        </div>
+      )}
+
       {/* Bid button for team owners */}
-      {canBid && (
+      {isTeamOwner && myTeam && auction.status === 'live' && !isMyTeamLeading && (
         <Button
           size='lg'
           className='w-full text-lg'
           loading={bidPending}
+          disabled={bidExceedsMax}
           onClick={() => onBid(nextBid)}
         >
           Bid {formatCurrency(nextBid, symbol, unit)}

@@ -32,7 +32,7 @@ const Navbar = () => {
           <div className='flex items-center gap-3'>
             {user && (
               <>
-                <span className='text-gray-400 text-sm hidden sm:block'>{user.name}</span>
+                <Link to='/profile' className='text-gray-400 hover:text-white text-sm hidden sm:block transition-colors'>{user.name}</Link>
                 <Badge variant={ROLE_BADGE[user.role] || 'default'}>
                   {user.role.replace('_', ' ')}
                 </Badge>

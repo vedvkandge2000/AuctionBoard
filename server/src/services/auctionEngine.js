@@ -83,6 +83,7 @@ const endAuction = async (auctionId, userId) => {
 
 /**
  * Put the next player on the block.
+ * Players are sequenced by the auction's playerCategories order, then uncategorised last.
  */
 const putNextPlayer = async (auctionId, userId) => {
   const auction = await Auction.findById(auctionId);
@@ -103,6 +104,25 @@ const putNextPlayer = async (auctionId, userId) => {
 
   if (ordered.length === 0) throw new ApiError(400, 'No more players in the auction pool');
 
+  // Shuffle within groups first (Fisher-Yates), then stable-sort by category order
+  // This ensures players within the same category come up in random order each round
+  for (let i = ordered.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ordered[i], ordered[j]] = [ordered[j], ordered[i]];
+  }
+
+  // Sort remaining players by the auction's playerCategories order; uncategorised players go last
+  const categoryOrder = auction.playerCategories || [];
+  const playerDocs = await Player.find({ _id: { $in: ordered } }).select('category').lean();
+  const categoryMap = Object.fromEntries(playerDocs.map((p) => [p._id.toString(), p.category]));
+  if (categoryOrder.length > 0) {
+    ordered.sort((a, b) => {
+      const ai = categoryOrder.indexOf(categoryMap[a.toString()]);
+      const bi = categoryOrder.indexOf(categoryMap[b.toString()]);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }
+
   const nextPlayerId = ordered[0];
   const player = await Player.findByIdAndUpdate(
     nextPlayerId,
@@ -118,10 +138,23 @@ const putNextPlayer = async (auctionId, userId) => {
 
   await BidEvent.create({ auctionId, playerId: player._id, eventType: 'player_set_live', triggeredBy: userId });
 
+  // Calculate max bid each team can place (purse minus minimum squad reservation)
+  const [teams, poolPlayers] = await Promise.all([
+    Team.find({ auctionId }).select('_id remainingPurse players').lean(),
+    Player.find({ auctionId, status: 'pool' }).select('basePrice').sort({ basePrice: 1 }).lean(),
+  ]);
+  const teamMaxBids = {};
+  for (const team of teams) {
+    const slotsNeeded = Math.max(0, auction.minSquadSize - team.players.length - 1);
+    const reserved = poolPlayers.slice(0, slotsNeeded).reduce((s, p) => s + p.basePrice, 0);
+    teamMaxBids[team._id.toString()] = Math.max(0, team.remainingPurse - reserved);
+  }
+
   getIO().to(auctionRoom(auctionId)).emit('auction:player_live', {
     player,
     basePrice: player.basePrice,
     bidStartedAt: auction.bidStartedAt,
+    teamMaxBids,
   });
 
   return { auction, player };
@@ -237,6 +270,11 @@ const placeBid = async (auctionId, teamId, userId, amount) => {
     return { valid: false, error: 'You are already the highest bidder' };
   }
 
+  // Cannot re-bid for a player your team released
+  if (team.releasedPlayerIds?.some((id) => id.equals(auction.currentPlayerId))) {
+    return { valid: false, error: 'Your team released this player — you cannot re-bid for them' };
+  }
+
   // Bid must equal exactly the next increment
   const expectedBid = calcNextBid(auction.currentBid, auction.bidIncrementTiers);
   if (amount !== expectedBid) {
@@ -311,4 +349,131 @@ const placeBid = async (auctionId, teamId, userId, amount) => {
   return { valid: true, nextBid: calcNextBid(amount, auction.bidIncrementTiers) };
 };
 
-module.exports = { startAuction, pauseAuction, resumeAuction, endAuction, putNextPlayer, markSold, markUnsold, placeBid };
+/**
+ * Release a sold player from their team back to the auction pool.
+ * The team is refunded the price paid and cannot re-bid for this player.
+ */
+const releasePlayer = async (auctionId, playerId, userId) => {
+  const [auction, player] = await Promise.all([
+    Auction.findById(auctionId),
+    Player.findById(playerId),
+  ]);
+  if (!auction) throw new ApiError(404, 'Auction not found');
+  if (!player) throw new ApiError(404, 'Player not found');
+  if (player.status !== 'sold') throw new ApiError(400, 'Only sold players can be released');
+
+  // Find the team that owns this player
+  const team = await Team.findOne({ auctionId, 'players.playerId': player._id });
+  if (!team) throw new ApiError(404, 'No team owns this player');
+
+  const squadEntry = team.players.find((p) => p.playerId.equals(player._id));
+  const refundAmount = squadEntry?.pricePaid || player.finalPrice || 0;
+
+  // Update team atomically: remove from squad, refund purse, record release
+  await Team.findByIdAndUpdate(team._id, {
+    $pull: { players: { playerId: player._id } },
+    $inc: { remainingPurse: refundAmount },
+    $addToSet: { releasedPlayerIds: player._id },
+  });
+
+  // Reset player to pool
+  await Player.findByIdAndUpdate(player._id, {
+    status: 'pool',
+    soldToTeamId: null,
+    finalPrice: 0,
+  });
+
+  // Remove from auction sold list
+  await Auction.findByIdAndUpdate(auctionId, {
+    $pull: { soldPlayerIds: player._id },
+  });
+
+  await BidEvent.create({
+    auctionId,
+    playerId: player._id,
+    teamId: team._id,
+    amount: refundAmount,
+    eventType: 'player_released',
+    triggeredBy: userId,
+  });
+
+  const updatedTeam = await Team.findById(team._id).select('name remainingPurse players').lean();
+
+  getIO().to(auctionRoom(auctionId)).emit('auction:player_released', {
+    playerId: player._id,
+    playerName: player.name,
+    teamId: team._id,
+    teamName: team.name,
+    refundAmount,
+    remainingPurse: updatedTeam.remainingPurse,
+  });
+
+  return { player, team: updatedTeam, refundAmount };
+};
+
+/**
+ * Advance to the next auction round.
+ * All unsold players are moved back to the pool for re-bidding.
+ */
+const advanceRound = async (auctionId, userId) => {
+  const auction = await Auction.findById(auctionId);
+  if (!auction) throw new ApiError(404, 'Auction not found');
+  if (!['live', 'paused'].includes(auction.status)) throw new ApiError(400, 'Auction must be live or paused');
+  if (auction.unsoldPlayerIds.length === 0) throw new ApiError(400, 'No unsold players to re-introduce');
+
+  // Move all unsold players back to pool
+  await Player.updateMany({ _id: { $in: auction.unsoldPlayerIds } }, { status: 'pool' });
+
+  const newRound = (auction.currentRound || 1) + 1;
+  auction.unsoldPlayerIds = [];
+  auction.currentRound = newRound;
+  await auction.save();
+
+  await BidEvent.create({ auctionId, eventType: 'round_advanced', triggeredBy: userId });
+
+  getIO().to(auctionRoom(auctionId)).emit('auction:round_advanced', { round: newRound });
+
+  return { round: newRound };
+};
+
+/**
+ * Set the current bid manually (offline mode only). Called via REST by admin.
+ * Broadcasts the same auction:bid_placed event as a regular bid.
+ */
+const setOfflineBid = async (auctionId, { teamId, amount }, adminId) => {
+  const [auction, team] = await Promise.all([
+    Auction.findById(auctionId),
+    Team.findById(teamId),
+  ]);
+  if (!auction) throw new ApiError(404, 'Auction not found');
+  if (auction.status !== 'live') throw new ApiError(400, 'Auction is not live');
+  if (auction.mode !== 'offline') throw new ApiError(400, 'This action is only available in offline mode');
+  if (!auction.currentPlayerId) throw new ApiError(400, 'No player is currently on the block');
+  if (!team) throw new ApiError(404, 'Team not found');
+  if (typeof amount !== 'number' || amount <= 0) throw new ApiError(400, 'amount must be a positive number');
+
+  auction.currentBid = amount;
+  auction.currentBidTeamId = teamId;
+  await auction.save();
+
+  await BidEvent.create({
+    auctionId,
+    playerId: auction.currentPlayerId,
+    teamId,
+    amount,
+    eventType: 'bid',
+    triggeredBy: adminId,
+  });
+
+  getIO().to(auctionRoom(auctionId)).emit('auction:bid_placed', {
+    teamId,
+    teamName: team.name,
+    teamShortName: team.shortName,
+    amount,
+    timestamp: new Date(),
+  });
+
+  return { currentBid: amount, currentBidTeamId: teamId };
+};
+
+module.exports = { startAuction, pauseAuction, resumeAuction, endAuction, putNextPlayer, markSold, markUnsold, placeBid, releasePlayer, advanceRound, setOfflineBid };

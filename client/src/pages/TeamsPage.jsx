@@ -129,6 +129,12 @@ const SquadModal = ({ open, onClose, auctionId, team, auction }) => {
   );
 };
 
+const getBudgetBorderColor = (pct) => {
+  if (pct > 60) return '#22c55e'; // green-500
+  if (pct > 25) return '#eab308'; // yellow-500
+  return '#ef4444'; // red-500
+};
+
 const TeamsPage = () => {
   const { id: auctionId } = useParams();
   const { isAdmin, isTeamOwner, user } = useAuth();
@@ -175,7 +181,7 @@ const TeamsPage = () => {
           <p className='text-gray-400 text-sm'>{teams.length} teams</p>
         </div>
         {isAdmin && <Button onClick={() => setShowForm(true)}>+ Add Team</Button>}
-        {isTeamOwner && !user?.teamId && (
+        {isTeamOwner && !teams.some((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id) && (
           <Button onClick={() => setShowForm(true)}>+ Create My Team</Button>
         )}
       </div>
@@ -184,21 +190,22 @@ const TeamsPage = () => {
         <EmptyState
           icon='🛡️'
           title='No teams yet'
-          description={isAdmin ? 'Add teams to the auction.' : isTeamOwner && !user?.teamId ? 'Create your team to join the auction.' : 'No teams have been added yet.'}
-          action={(isAdmin || (isTeamOwner && !user?.teamId)) && <Button onClick={() => setShowForm(true)}>{isAdmin ? 'Add Team' : 'Create My Team'}</Button>}
+          description={isAdmin ? 'Add teams to the auction.' : isTeamOwner ? 'Create your team to join the auction.' : 'No teams have been added yet.'}
+          hint={isAdmin ? 'Tip: assign team owners so they can access the auction room.' : undefined}
+          action={(isAdmin || isTeamOwner) && <Button onClick={() => setShowForm(true)}>{isAdmin ? 'Add Team' : 'Create My Team'}</Button>}
         />
       ) : (
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           {teams.map((team) => {
             const pct = Math.round((team.remainingPurse / team.initialPurse) * 100);
             return (
-              <div key={team._id} className='bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-colors' style={{ borderTopColor: team.colorHex, borderTopWidth: 3 }}>
+              <div key={team._id} className='bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-colors' style={{ borderTopColor: team.colorHex, borderTopWidth: 3, borderLeftColor: getBudgetBorderColor(pct), borderLeftWidth: 3 }}>
                 <div className='flex items-center gap-3 mb-3'>
                   {team.logoUrl && <img src={team.logoUrl} alt='' className='h-8 w-8 rounded-full object-cover' />}
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center gap-2'>
                       <h2 className='text-white font-semibold truncate'>{team.name}</h2>
-                      {isTeamOwner && user?.teamId?.toString() === team._id && (
+                      {isTeamOwner && (team.ownerId?._id === user?.id || team.ownerId === user?.id) && (
                         <span className='text-xs bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full flex-shrink-0'>My Team</span>
                       )}
                     </div>

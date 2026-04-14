@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 
 const AuctionControls = ({ auction, onUpdate }) => {
   const { addToast } = useToast();
-  const { status, _id: id } = auction;
+  const { status, _id: id, currentRound = 1, unsoldPlayerIds = [] } = auction;
 
   const act = async (fn, label) => {
     try {
@@ -16,9 +16,16 @@ const AuctionControls = ({ auction, onUpdate }) => {
     }
   };
 
+  const hasUnsold = unsoldPlayerIds.length > 0;
+
   return (
     <div className='bg-gray-900 rounded-2xl border border-gray-700 p-4'>
-      <h3 className='text-sm font-medium text-gray-400 mb-3'>Admin Controls</h3>
+      <div className='flex items-center justify-between mb-3'>
+        <h3 className='text-sm font-medium text-gray-400'>Admin Controls</h3>
+        <span className='text-xs font-medium text-indigo-400 bg-indigo-900/30 border border-indigo-800 px-2 py-0.5 rounded-full'>
+          Round {currentRound}
+        </span>
+      </div>
       <div className='flex flex-wrap gap-2'>
         {status === 'draft' && (
           <Button size='sm' variant='success' onClick={() => act(auctionService.startAuction, 'Started')}>
@@ -44,6 +51,19 @@ const AuctionControls = ({ auction, onUpdate }) => {
         {status === 'paused' && (
           <Button size='sm' variant='success' onClick={() => act(auctionService.resumeAuction, 'Resumed')}>
             ▶️ Resume
+          </Button>
+        )}
+        {(status === 'live' || status === 'paused') && hasUnsold && (
+          <Button
+            size='sm'
+            variant='ghost'
+            onClick={() => {
+              if (confirm(`Re-introduce ${unsoldPlayerIds.length} unsold player(s) as Round ${currentRound + 1}?`)) {
+                act(auctionService.advanceRound, `Round ${currentRound + 1} started`);
+              }
+            }}
+          >
+            🔄 Next Round ({unsoldPlayerIds.length} unsold)
           </Button>
         )}
         {(status === 'live' || status === 'paused') && (

@@ -2,15 +2,19 @@ const express = require('express');
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
-  createAuction, getAuction, listAuctions, updateConfig, deleteAuction, getOrder, setOrder,
+  createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder,
 } = require('../controllers/auction.controller');
 const {
-  start, pause, resume, end, nextPlayer, sold, unsold, overrideBid,
+  start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer,
 } = require('../controllers/auctionFlow.controller');
+const {
+  createRequest, listRequests, approveRequest, rejectRequest,
+} = require('../controllers/releaseRequest.controller');
 
 const router = express.Router();
 
 router.get('/', protect, listAuctions);
+router.get('/browse', protect, browseAuctions); // must be before /:id
 router.post('/', protect, requireRole('admin'), createAuction);
 router.get('/:id', protect, getAuction);
 router.patch('/:id/config', protect, requireRole('admin'), updateConfig);
@@ -27,5 +31,14 @@ router.post('/:id/next-player', protect, requireRole('admin'), nextPlayer);
 router.post('/:id/sold', protect, requireRole('admin'), sold);
 router.post('/:id/unsold', protect, requireRole('admin'), unsold);
 router.post('/:id/override-bid', protect, requireRole('admin'), overrideBid);
+router.post('/:id/advance-round', protect, requireRole('admin'), advanceRound);
+router.post('/:id/offline-bid', protect, requireRole('admin'), setOfflineBid);
+router.post('/:id/players/:pid/release', protect, requireRole('admin'), releasePlayer);
+
+// Player release request flow
+router.post('/:id/release-requests', protect, requireRole('team_owner'), createRequest);
+router.get('/:id/release-requests', protect, requireRole('admin'), listRequests);
+router.post('/:id/release-requests/:reqId/approve', protect, requireRole('admin'), approveRequest);
+router.post('/:id/release-requests/:reqId/reject', protect, requireRole('admin'), rejectRequest);
 
 module.exports = router;

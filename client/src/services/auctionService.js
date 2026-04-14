@@ -35,6 +35,28 @@ export const setAuctionOrder = async (id, playerIds) => {
   return data.order;
 };
 
+// Browse all open auctions (with membership status for team_owners)
+export const browseAuctions = async () => {
+  const { data } = await api.get('/auctions/browse');
+  return data.auctions;
+};
+
+// Membership calls (team_owner)
+export const applyToAuction = async (auctionId) => {
+  const { data } = await api.post('/memberships', { auctionId });
+  return data.membership;
+};
+
+export const getMyMemberships = async () => {
+  const { data } = await api.get('/memberships/mine');
+  return data.memberships;
+};
+
+export const withdrawMembership = async (membershipId) => {
+  const { data } = await api.delete(`/memberships/${membershipId}`);
+  return data;
+};
+
 // Flow control
 export const startAuction = async (id) => api.post(`/auctions/${id}/start`);
 export const pauseAuction = async (id) => api.post(`/auctions/${id}/pause`);
@@ -45,3 +67,23 @@ export const markSold = async (id) => api.post(`/auctions/${id}/sold`);
 export const markUnsold = async (id) => api.post(`/auctions/${id}/unsold`);
 export const overrideBid = async (id, teamId, amount) =>
   api.post(`/auctions/${id}/override-bid`, { teamId, amount });
+export const advanceRound = async (id) =>
+  api.post(`/auctions/${id}/advance-round`);
+
+export const setOfflineBid = async (id, teamId, amount) =>
+  api.post(`/auctions/${id}/offline-bid`, { teamId, amount });
+
+export const releasePlayerDirect = async (auctionId, playerId) =>
+  api.post(`/auctions/${auctionId}/players/${playerId}/release`);
+
+// Release request flow
+export const requestRelease = async (id, playerId, reason = '') =>
+  api.post(`/auctions/${id}/release-requests`, { playerId, reason });
+export const listReleaseRequests = async (id, status = 'pending') => {
+  const { data } = await api.get(`/auctions/${id}/release-requests`, { params: { status } });
+  return data.requests;
+};
+export const approveReleaseRequest = async (id, reqId) =>
+  api.post(`/auctions/${id}/release-requests/${reqId}/approve`);
+export const rejectReleaseRequest = async (id, reqId, rejectionNote = '') =>
+  api.post(`/auctions/${id}/release-requests/${reqId}/reject`, { rejectionNote });

@@ -19,8 +19,14 @@ export const formatCurrency = (amount, symbol = '₹', unit = 'lakh') => {
 
 export const formatShort = (amount, symbol = '₹', unit = 'lakh') => {
   if (amount === null || amount === undefined) return '—';
-  if (unit === 'lakh' && amount >= 100) {
-    return `${symbol}${(amount / 100).toFixed(1).replace(/\.0$/, '')}Cr`;
+  // lakh-specific: auto-promote to Cr when >= 100
+  if (unit === 'lakh') {
+    if (amount >= 100) {
+      return `${symbol}${(amount / 100).toFixed(1).replace(/\.0$/, '')}Cr`;
+    }
+    return `${symbol}${amount}L`;
   }
-  return `${symbol}${amount}L`;
+  // All other units: show value + unit label as-is
+  const formatted = amount % 1 === 0 ? amount.toString() : parseFloat(amount.toFixed(2)).toString();
+  return `${symbol}${formatted} ${unit}`;
 };

@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  getPendingUsers, approveUser, rejectUser,
+  getPendingMemberships, approveMembership, rejectMembership,
   getPendingPlayers, approvePlayer, rejectPlayer,
 } from '../services/registrationService';
 import { listAuctions } from '../services/auctionService';
@@ -19,25 +19,25 @@ const STATUS_VARIANTS = {
   rejected: 'red',
 };
 
-// --- User Approvals Tab ---
-const UserApprovalsTab = () => {
+// --- Membership Approvals Tab ---
+const MembershipApprovalsTab = () => {
   const { addToast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState('pending');
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['pending-users', filter],
-    queryFn: () => getPendingUsers(filter),
+  const { data: memberships = [], isLoading } = useQuery({
+    queryKey: ['memberships', filter],
+    queryFn: () => getPendingMemberships(filter),
   });
 
   const approveMut = useMutation({
-    mutationFn: approveUser,
-    onSuccess: () => { addToast('User approved', 'success'); qc.invalidateQueries({ queryKey: ['pending-users'] }); },
+    mutationFn: approveMembership,
+    onSuccess: () => { addToast('Membership approved', 'success'); qc.invalidateQueries({ queryKey: ['memberships'] }); },
     onError: (err) => addToast(err.response?.data?.message || 'Failed', 'error'),
   });
   const rejectMut = useMutation({
-    mutationFn: rejectUser,
-    onSuccess: () => { addToast('User rejected', 'success'); qc.invalidateQueries({ queryKey: ['pending-users'] }); },
+    mutationFn: (id) => rejectMembership(id),
+    onSuccess: () => { addToast('Membership rejected', 'success'); qc.invalidateQueries({ queryKey: ['memberships'] }); },
     onError: (err) => addToast(err.response?.data?.message || 'Failed', 'error'),
   });
 
@@ -59,28 +59,37 @@ const UserApprovalsTab = () => {
 
       {isLoading ? (
         <div className='flex justify-center py-12'><Spinner /></div>
-      ) : users.length === 0 ? (
-        <EmptyState icon='👤' title='No users' description={`No ${filter} team owner accounts`} />
+      ) : memberships.length === 0 ? (
+        <EmptyState icon='👤' title='No applications' description={`No ${filter} auction membership applications`} />
       ) : (
         <div className='space-y-3'>
-          {users.map((u) => (
-            <div key={u._id} className='bg-gray-800 rounded-xl p-4 flex items-center justify-between gap-4'>
+          {memberships.map((m) => (
+            <div key={m._id} className='bg-gray-800 rounded-xl p-4 flex items-center justify-between gap-4'>
               <div className='min-w-0'>
-                <p className='text-white font-medium truncate'>{u.name}</p>
-                <p className='text-gray-400 text-sm truncate'>{u.email}</p>
+                <p className='text-white font-medium truncate'>{m.userId?.name}</p>
+                <p className='text-gray-400 text-sm truncate'>{m.userId?.email}</p>
+                {m.auctionId && (
+                  <p className='text-indigo-400 text-xs mt-0.5 truncate'>
+                    Auction: {m.auctionId.name}
+                    {m.auctionId.sport && ` · ${m.auctionId.sport}`}
+                  </p>
+                )}
                 <p className='text-gray-600 text-xs mt-0.5'>
-                  Registered {new Date(u.createdAt).toLocaleDateString()}
+                  Applied {new Date(m.createdAt).toLocaleDateString()}
                 </p>
+                {m.status === 'rejected' && m.rejectionReason && (
+                  <p className='text-red-400 text-xs mt-0.5'>Reason: {m.rejectionReason}</p>
+                )}
               </div>
               <div className='flex items-center gap-2 flex-shrink-0'>
-                <Badge variant={STATUS_VARIANTS[u.approvalStatus]}>{u.approvalStatus}</Badge>
-                {u.approvalStatus === 'pending' && (
+                <Badge variant={STATUS_VARIANTS[m.status]}>{m.status}</Badge>
+                {m.status === 'pending' && (
                   <>
                     <Button
                       size='sm'
                       variant='success'
                       loading={approveMut.isPending}
-                      onClick={() => approveMut.mutate(u._id)}
+                      onClick={() => approveMut.mutate(m._id)}
                     >
                       Approve
                     </Button>
@@ -88,7 +97,7 @@ const UserApprovalsTab = () => {
                       size='sm'
                       variant='danger'
                       loading={rejectMut.isPending}
-                      onClick={() => rejectMut.mutate(u._id)}
+                      onClick={() => rejectMut.mutate(m._id)}
                     >
                       Reject
                     </Button>
@@ -103,14 +112,179 @@ const UserApprovalsTab = () => {
   );
 };
 
+// Inline approval form state for a single registration
+// ApprovalForm — two modes:
+// 1. Account-linked (r.auctionId set): auction is fixed, just assign category + base price
+// 2. Legacy anonymous (no auctionId): admin must pick auction too
+const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }) => {
+  // If the player chose an auction when applying, use it directly
+  const linkedAuction = registration.auctionId; // populated object or null
+
+  const [selectedAuction, setSelectedAuction] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [basePriceOverride, setBasePriceOverride] = useState('');
+  const [setNum, setSetNum] = useState(1);
+
+  // For account-linked registrations, use the player's chosen auction
+  const activeAuction = linkedAuction
+    ? linkedAuction
+    : auctions.find((a) => a._id === selectedAuction);
+
+  const availableCategories = activeAuction?.playerCategories || [];
+  const autoPriceFromCategory =
+    selectedCategory && activeAuction?.categoryBasePrices?.[selectedCategory] != null
+      ? activeAuction.categoryBasePrices[selectedCategory]
+      : null;
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategory(e.target.value);
+    setBasePriceOverride('');
+  };
+
+  const effectiveBasePrice =
+    basePriceOverride !== '' ? Number(basePriceOverride) : autoPriceFromCategory;
+
+  const canConfirm = linkedAuction ? true : !!selectedAuction;
+
+  const handleConfirm = () => {
+    onConfirm({
+      id: registration._id,
+      // For legacy flow, pass the picked auctionId; for account-linked, server uses registration.auctionId
+      auctionId: linkedAuction ? undefined : selectedAuction,
+      setNumber: setNum,
+      category: selectedCategory || undefined,
+      basePrice: basePriceOverride !== '' ? Number(basePriceOverride) : undefined,
+    });
+  };
+
+  return (
+    <div className='space-y-3'>
+      <p className='text-gray-500 text-xs'>
+        {linkedAuction
+          ? 'Player applied for this auction. Assign a category to set their base price, then approve.'
+          : 'Approving adds this player to the selected auction. Assign a category to set their base price.'}
+      </p>
+
+      <div className='grid grid-cols-2 gap-2'>
+        {/* Auction — fixed for account-linked, dropdown for legacy */}
+        <div className='col-span-2'>
+          <label className='block text-gray-400 text-xs mb-1'>Auction</label>
+          {linkedAuction ? (
+            <div className='bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm'>
+              {linkedAuction.name}
+              {linkedAuction.sport && <span className='text-gray-400 ml-2 text-xs capitalize'>({linkedAuction.sport})</span>}
+            </div>
+          ) : (
+            <select
+              value={selectedAuction}
+              onChange={(e) => { setSelectedAuction(e.target.value); setSelectedCategory(''); setBasePriceOverride(''); }}
+              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+            >
+              <option value=''>Select auction *</option>
+              {auctions.map((a) => (
+                <option key={a._id} value={a._id}>{a.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className='block text-gray-400 text-xs mb-1'>
+            Category {availableCategories.length === 0 ? '(none configured)' : ''}
+          </label>
+          {availableCategories.length > 0 ? (
+            <select
+              value={selectedCategory}
+              onChange={handleCategoryChange}
+              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+              disabled={!activeAuction}
+            >
+              <option value=''>Not assigned</option>
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type='text'
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              placeholder='e.g. A+'
+              disabled={!activeAuction}
+              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40'
+            />
+          )}
+        </div>
+
+        {/* Base Price */}
+        <div>
+          <label className='block text-gray-400 text-xs mb-1'>
+            Base Price
+            {autoPriceFromCategory != null && basePriceOverride === '' && (
+              <span className='text-indigo-400 ml-1'>(auto: {autoPriceFromCategory})</span>
+            )}
+          </label>
+          <input
+            type='number'
+            min={0}
+            value={basePriceOverride}
+            onChange={(e) => setBasePriceOverride(e.target.value)}
+            placeholder={autoPriceFromCategory != null ? String(autoPriceFromCategory) : 'e.g. 100'}
+            className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+          />
+          {autoPriceFromCategory != null && basePriceOverride === '' && (
+            <p className='text-gray-600 text-xs mt-0.5'>Leave blank to use category price</p>
+          )}
+        </div>
+
+        {/* Set # */}
+        <div>
+          <label className='block text-gray-400 text-xs mb-1'>Set #</label>
+          <input
+            type='number'
+            min={1}
+            value={setNum}
+            onChange={(e) => setSetNum(Number(e.target.value))}
+            className='w-20 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+          />
+        </div>
+      </div>
+
+      {/* Summary */}
+      {canConfirm && (
+        <div className='bg-gray-900 rounded-lg px-3 py-2 text-xs text-gray-400'>
+          <span className='text-white'>{registration.name}</span>
+          {selectedCategory && <span className='text-indigo-300 ml-2'>[{selectedCategory}]</span>}
+          {effectiveBasePrice != null && <span className='ml-2'>· Base: {effectiveBasePrice}</span>}
+          {!selectedCategory && <span className='text-yellow-500 ml-2'>· No category — will need manual base price</span>}
+        </div>
+      )}
+
+      <div className='flex gap-2'>
+        <Button
+          size='sm'
+          variant='success'
+          disabled={!canConfirm}
+          loading={isPending}
+          onClick={handleConfirm}
+        >
+          Confirm Approve
+        </Button>
+        <Button size='sm' variant='ghost' onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 // --- Player Approvals Tab ---
 const PlayerApprovalsTab = () => {
   const { addToast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState('pending');
   const [assigningId, setAssigningId] = useState(null);
-  const [selectedAuction, setSelectedAuction] = useState('');
-  const [setNum, setSetNum] = useState(1);
 
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ['pending-players', filter],
@@ -123,12 +297,12 @@ const PlayerApprovalsTab = () => {
   });
 
   const approveMut = useMutation({
-    mutationFn: ({ id, auctionId, setNumber }) => approvePlayer(id, auctionId, setNumber),
+    mutationFn: ({ id, auctionId, setNumber, category, basePrice }) =>
+      approvePlayer(id, { auctionId, setNumber, category, basePrice }),
     onSuccess: () => {
       addToast('Player approved and added to auction', 'success');
       qc.invalidateQueries({ queryKey: ['pending-players'] });
       setAssigningId(null);
-      setSelectedAuction('');
     },
     onError: (err) => addToast(err.response?.data?.message || 'Failed', 'error'),
   });
@@ -158,7 +332,7 @@ const PlayerApprovalsTab = () => {
       {isLoading ? (
         <div className='flex justify-center py-12'><Spinner /></div>
       ) : registrations.length === 0 ? (
-        <EmptyState icon='🏏' title='No registrations' description={`No ${filter} player registrations`} />
+        <EmptyState icon='🏆' title='No registrations' description={`No ${filter} player registrations for your auctions`} />
       ) : (
         <div className='space-y-3'>
           {registrations.map((r) => (
@@ -168,24 +342,36 @@ const PlayerApprovalsTab = () => {
                   <div className='flex items-center gap-2 flex-wrap'>
                     <p className='text-white font-medium'>{r.name}</p>
                     <Badge variant='blue'>{r.role}</Badge>
+                    {r.gender && (
+                      <Badge variant={r.gender === 'female' ? 'pink' : 'blue'}>
+                        {r.gender === 'female' ? '♀ F' : '♂ M'}
+                      </Badge>
+                    )}
                     {r.nationality === 'overseas' && <Badge variant='indigo'>Overseas</Badge>}
                   </div>
+                  {r.userId ? (
+                    <p className='text-indigo-400 text-xs mt-0.5'>
+                      Account: {r.userId.name} · {r.userId.email}
+                    </p>
+                  ) : (
+                    <p className='text-gray-600 text-xs mt-0.5'>Legacy registration (no account)</p>
+                  )}
                   <p className='text-gray-400 text-sm mt-0.5'>
-                    Base price: ₹{r.basePrice}L
-                    {r.country && ` · ${r.country}`}
+                    {r.country && `${r.country}`}
                     {r.contactEmail && ` · ${r.contactEmail}`}
                   </p>
                   {r.stats && Object.keys(r.stats).length > 0 && (
-                    <p className='text-gray-500 text-xs mt-0.5'>
-                      {Object.entries(r.stats).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                    </p>
+                    <div className='flex flex-wrap gap-2 mt-1.5'>
+                      {Object.entries(r.stats).map(([k, v]) => (
+                        <span key={k} className='bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded'>
+                          {k}: {v}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  <p className='text-gray-600 text-xs mt-1'>
+                  <p className='text-gray-600 text-xs mt-1.5'>
                     Submitted {new Date(r.createdAt).toLocaleDateString()}
                   </p>
-                  {r.status === 'approved' && r.assignedAuctionId && (
-                    <p className='text-green-500 text-xs mt-1'>Assigned to auction</p>
-                  )}
                   {r.status === 'rejected' && r.rejectionReason && (
                     <p className='text-red-400 text-xs mt-1'>Reason: {r.rejectionReason}</p>
                   )}
@@ -198,46 +384,16 @@ const PlayerApprovalsTab = () => {
               {r.status === 'pending' && (
                 <div className='mt-3 pt-3 border-t border-gray-700'>
                   {assigningId === r._id ? (
-                    <div className='flex flex-wrap gap-2 items-end'>
-                      <div>
-                        <label className='block text-gray-400 text-xs mb-1'>Assign to Auction *</label>
-                        <select
-                          value={selectedAuction}
-                          onChange={(e) => setSelectedAuction(e.target.value)}
-                          className='bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                        >
-                          <option value=''>Select auction</option>
-                          {auctions.map((a) => (
-                            <option key={a._id} value={a._id}>{a.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className='block text-gray-400 text-xs mb-1'>Set #</label>
-                        <input
-                          type='number'
-                          min={1}
-                          value={setNum}
-                          onChange={(e) => setSetNum(Number(e.target.value))}
-                          className='w-20 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                        />
-                      </div>
-                      <Button
-                        size='sm'
-                        variant='success'
-                        disabled={!selectedAuction}
-                        loading={approveMut.isPending}
-                        onClick={() => approveMut.mutate({ id: r._id, auctionId: selectedAuction, setNumber: setNum })}
-                      >
-                        Confirm Approve
-                      </Button>
-                      <Button size='sm' variant='ghost' onClick={() => setAssigningId(null)}>
-                        Cancel
-                      </Button>
-                    </div>
+                    <ApprovalForm
+                      registration={r}
+                      auctions={auctions}
+                      onConfirm={(payload) => approveMut.mutate(payload)}
+                      onCancel={() => setAssigningId(null)}
+                      isPending={approveMut.isPending}
+                    />
                   ) : (
                     <div className='flex gap-2'>
-                      <Button size='sm' variant='success' onClick={() => { setAssigningId(r._id); setSelectedAuction(''); }}>
+                      <Button size='sm' variant='success' onClick={() => setAssigningId(r._id)}>
                         Approve
                       </Button>
                       <Button
@@ -264,7 +420,7 @@ const PlayerApprovalsTab = () => {
 const AdminApprovalsPage = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('users');
+  const [tab, setTab] = useState('memberships');
 
   if (!isAdmin) {
     navigate('/', { replace: true });
@@ -280,9 +436,9 @@ const AdminApprovalsPage = () => {
 
       <div className='flex gap-1 bg-gray-800 rounded-xl p-1 mb-6 w-fit'>
         <button
-          onClick={() => setTab('users')}
+          onClick={() => setTab('memberships')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'users' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'memberships' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
           }`}
         >
           Team Owners
@@ -297,7 +453,7 @@ const AdminApprovalsPage = () => {
         </button>
       </div>
 
-      {tab === 'users' ? <UserApprovalsTab /> : <PlayerApprovalsTab />}
+      {tab === 'memberships' ? <MembershipApprovalsTab /> : <PlayerApprovalsTab />}
     </div>
   );
 };

@@ -185,7 +185,7 @@ const PlayersPage = () => {
       </div>
 
       {players.length === 0 ? (
-        <EmptyState icon='👤' title='No players found' description='Add players manually or import a CSV.' action={isAdmin && <Button onClick={() => setShowForm(true)}>Add Player</Button>} />
+        <EmptyState icon='👤' title='No players found' description='Add players manually or import a CSV.' hint={isAdmin ? 'Tip: use CSV import for bulk uploads — download the template to get started.' : undefined} action={isAdmin && <Button onClick={() => setShowForm(true)}>Add Player</Button>} />
       ) : (
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
           {players.map((player) => (

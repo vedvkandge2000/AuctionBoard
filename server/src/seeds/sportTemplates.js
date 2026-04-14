@@ -30,8 +30,8 @@ const SEEDS = [
     name: 'Badminton',
     sport: 'badminton',
     icon: '🏸',
-    description: 'Gender-balanced squads with category-based player tiers (A+/A/B/F+/F)',
-    playerRoles: ['A+', 'A', 'B', 'F+', 'F'],
+    description: 'Gender-balanced squads with category-based player tiers (A+/A/B/F+/F). Player roles: Singles/Doubles/All-Rounder.',
+    playerRoles: ['Singles', 'Doubles', 'All-Rounder'],
     currency: 'CR',
     currencySymbol: '₹',
     currencyUnit: 'CR',
@@ -46,6 +46,8 @@ const SEEDS = [
       { upToAmount: 20, increment: 1 },
       { upToAmount: 999999999, increment: 2 },
     ],
+    playerCategories: ['F+', 'A+', 'A', 'F', 'B'],
+    categoryBasePrices: { 'F+': 4, 'A+': 5, A: 3, F: 2, B: 1 },
     rtmEnabled: false,
     rtmCardsPerTeam: 1,
     isSeeded: true,
@@ -53,11 +55,19 @@ const SEEDS = [
 ];
 
 const seedSportTemplates = async () => {
-  const count = await SportTemplate.countDocuments();
-  if (count > 0) return; // already seeded
-
-  await SportTemplate.insertMany(SEEDS);
-  console.log('Sport templates seeded (Cricket, Badminton)');
+  // Upsert each seeded template by sport slug so updates to defaults are applied on restart
+  let created = 0, updated = 0;
+  for (const seed of SEEDS) {
+    const { sport, ...fields } = seed;
+    const result = await SportTemplate.updateOne(
+      { sport },
+      { $set: { sport, ...fields } },
+      { upsert: true }
+    );
+    if (result.upsertedCount) created++;
+    else if (result.modifiedCount) updated++;
+  }
+  if (created || updated) console.log(`Sport templates: ${created} created, ${updated} updated`);
 };
 
 module.exports = seedSportTemplates;

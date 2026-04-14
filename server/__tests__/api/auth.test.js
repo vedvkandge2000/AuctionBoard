@@ -23,18 +23,19 @@ describe('POST /api/auth/register', () => {
     expect(res.body.user.role).toBe('admin');
   });
 
-  test('registers team_owner with pending status', async () => {
+  test('registers team_owner and returns token', async () => {
     const res = await request(app).post('/api/auth/register').send({
       name: 'Owner', email: 'owner@test.com', password: 'Password1!', role: 'team_owner',
     });
     expect(res.status).toBe(201);
-    expect(res.body.user.approvalStatus).toBe('pending');
+    expect(res.body.token).toBeDefined();
+    expect(res.body.user.role).toBe('team_owner');
   });
 
   test('rejects duplicate email', async () => {
     await createAdminUser();
     const res = await request(app).post('/api/auth/register').send({
-      name: 'Admin2', email: 'admin@test.com', password: 'Password1!', role: 'admin',
+      name: 'Admin Two', email: 'admin@test.com', password: 'Password1!', role: 'admin',
     });
     expect(res.status).toBe(409);
   });
@@ -64,10 +65,11 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(401);
   });
 
-  test('blocks pending team_owner from logging in', async () => {
+  test('allows team_owner to log in immediately (no global approval gate)', async () => {
     await createPendingOwner();
     const res = await request(app).post('/api/auth/login').send({ email: 'pending@test.com', password: 'Password1!' });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
   });
 });
 

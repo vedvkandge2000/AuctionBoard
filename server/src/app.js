@@ -13,6 +13,7 @@ const teamRoutes = require('./routes/team.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const registrationRoutes = require('./routes/registration.routes');
 const adminRoutes = require('./routes/admin.routes');
+const membershipRoutes = require('./routes/membership.routes');
 const sportTemplateRoutes = require('./routes/sportTemplate.routes');
 
 const app = express();
@@ -32,6 +33,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 app.use('/api/auth', authRoutes);
 app.use('/api/register', registrationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/memberships', membershipRoutes);
 app.use('/api/auctions', auctionRoutes);
 app.use('/api/auctions/:id/players', playerRoutes);
 app.use('/api/auctions/:id/teams', teamRoutes);

@@ -61,6 +61,77 @@ const BidTierBuilder = ({ tiers, onChange }) => {
   );
 };
 
+// CategoryBuilder — dynamic category list with name + base price per row
+// categories: string[] (names in auction sequence order)
+// basePrices: { [name]: number }
+// onChange(newCategories, newBasePrices)
+const CategoryBuilder = ({ categories, basePrices, onChange }) => {
+  const updateName = (i, newName) => {
+    const oldName = categories[i];
+    const newCats = categories.map((c, idx) => idx === i ? newName : c);
+    const newPrices = { ...basePrices };
+    if (oldName && oldName !== newName) {
+      newPrices[newName] = newPrices[oldName] ?? 0;
+      delete newPrices[oldName];
+    }
+    onChange(newCats, newPrices);
+  };
+
+  const updatePrice = (name, val) => {
+    onChange(categories, { ...basePrices, [name]: val === '' ? 0 : Number(val) });
+  };
+
+  const add = () => {
+    const newName = '';
+    onChange([...categories, newName], { ...basePrices });
+  };
+
+  const remove = (i) => {
+    const name = categories[i];
+    const newCats = categories.filter((_, idx) => idx !== i);
+    const newPrices = { ...basePrices };
+    delete newPrices[name];
+    onChange(newCats, newPrices);
+  };
+
+  return (
+    <div className='space-y-2'>
+      {categories.length > 0 && (
+        <div className='grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-500 px-1 mb-1'>
+          <span>Category Name</span>
+          <span>Base Price</span>
+          <span />
+        </div>
+      )}
+      {categories.map((cat, i) => (
+        <div key={i} className='grid grid-cols-[1fr_1fr_auto] gap-2 items-center'>
+          <input
+            type='text'
+            className={inputCls}
+            value={cat}
+            placeholder='e.g. A+, Gold, Open'
+            onChange={(e) => updateName(i, e.target.value)}
+          />
+          <input
+            type='number'
+            min={0}
+            step={0.5}
+            className={inputCls}
+            value={basePrices[cat] ?? ''}
+            placeholder='Base price'
+            onChange={(e) => updatePrice(cat, e.target.value)}
+          />
+          <button onClick={() => remove(i)} className='text-red-400 hover:text-red-300 px-2 text-lg leading-none'>×</button>
+        </div>
+      ))}
+      <Button size='sm' variant='ghost' type='button' onClick={add}>+ Add Category</Button>
+      <p className='text-gray-600 text-xs mt-1'>
+        Row order = auction sequence. Base price is auto-applied when a player with that category is approved into this auction.
+      </p>
+    </div>
+  );
+};
+
 const AuctionConfigPage = () => {
   useRoleGuard('admin');
   const { id } = useParams();
@@ -87,10 +158,13 @@ const AuctionConfigPage = () => {
         maxOverseasPlayers: auction.maxOverseasPlayers,
         minMalePlayers: auction.minMalePlayers ?? 0,
         minFemalePlayers: auction.minFemalePlayers ?? 0,
+        mode: auction.mode || 'online',
         rtmEnabled: auction.rtmEnabled,
         rtmCardsPerTeam: auction.rtmCardsPerTeam,
         playerRoles: (auction.playerRoles || []).join(', '),
         bidIncrementTiers: auction.bidIncrementTiers,
+        playerCategories: auction.playerCategories || [],
+        categoryBasePrices: auction.categoryBasePrices || {},
       });
     }
   }, [auction]);
@@ -114,6 +188,8 @@ const AuctionConfigPage = () => {
       ...f,
       ...config,
       playerRoles: (config.playerRoles || []).join(', '),
+      playerCategories: config.playerCategories || [],
+      categoryBasePrices: config.categoryBasePrices || {},
     }));
     addToast(`Applied ${tName} template defaults`, 'success');
   };
@@ -130,6 +206,8 @@ const AuctionConfigPage = () => {
       minMalePlayers: Number(form.minMalePlayers),
       minFemalePlayers: Number(form.minFemalePlayers),
       rtmCardsPerTeam: Number(form.rtmCardsPerTeam),
+      playerCategories: form.playerCategories.filter(Boolean),
+      categoryBasePrices: form.categoryBasePrices,
     });
   };
 
@@ -201,6 +279,23 @@ const AuctionConfigPage = () => {
         <Section title={`Bid Increment Tiers (${form.currencyUnit}s)`}>
           <p className='text-gray-500 text-xs'>Define increment rules by bid range. Last row's "up to" is treated as infinity.</p>
           <BidTierBuilder tiers={form.bidIncrementTiers} onChange={(tiers) => handle('bidIncrementTiers', tiers)} />
+        </Section>
+
+        <Section title={`Player Categories (${form.currencyUnit})`}>
+          <CategoryBuilder
+            categories={form.playerCategories}
+            basePrices={form.categoryBasePrices}
+            onChange={(cats, prices) => setForm((f) => ({ ...f, playerCategories: cats, categoryBasePrices: prices }))}
+          />
+        </Section>
+
+        <Section title='Auction Mode'>
+          <Field label='Mode' hint='Offline: admin manually scribes bids from a physical room. Cannot change once auction is live.'>
+            <select className={inputCls} value={form.mode || 'online'} onChange={(e) => handle('mode', e.target.value)}>
+              <option value='online'>Online — team owners bid in real-time</option>
+              <option value='offline'>Offline — admin scribes bids from physical room</option>
+            </select>
+          </Field>
         </Section>
 
         <Section title='RTM Cards'>

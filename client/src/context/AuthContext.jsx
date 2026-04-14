@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
 import { login as loginService } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -39,13 +39,29 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => {
+      const next = { ...prev, ...partial };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Used when registration returns a JWT directly (no separate login step needed)
+  const setSession = useCallback((token, user) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setToken(token);
+    setUser(user);
+  }, []);
+
   const isAdmin = user?.role === 'admin';
   const isTeamOwner = user?.role === 'team_owner';
+  const isPlayer = user?.role === 'player';
   const isAuthenticated = !!token;
-  const isPendingApproval = user?.approvalStatus === 'pending';
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAdmin, isTeamOwner, isAuthenticated, isPendingApproval, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isAdmin, isTeamOwner, isPlayer, isAuthenticated, login, logout, updateUser, setSession }}>
       {children}
     </AuthContext.Provider>
   );

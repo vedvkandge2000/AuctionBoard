@@ -32,6 +32,8 @@ const sportTemplateSchema = new mongoose.Schema(
     },
     rtmEnabled: { type: Boolean, default: false },
     rtmCardsPerTeam: { type: Number, default: 1 },
+    playerCategories: { type: [String], default: [] },
+    categoryBasePrices: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     isSeeded: { type: Boolean, default: false }, // true for built-in templates; prevents accidental deletion
   },
