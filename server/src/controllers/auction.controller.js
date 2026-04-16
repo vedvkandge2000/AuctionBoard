@@ -69,10 +69,10 @@ const updateConfig = asyncHandler(async (req, res) => {
   res.json({ success: true, auction });
 });
 
-// Delete auction (draft only)
+// Delete auction (draft or completed)
 const deleteAuction = asyncHandler(async (req, res) => {
   const auction = await requireAuctionOwner(req.params.id, req.user.id);
-  if (auction.status !== 'draft') throw new ApiError(400, 'Can only delete a draft auction');
+  if (!['draft', 'completed'].includes(auction.status)) throw new ApiError(400, 'Can only delete a draft or completed auction');
 
   await Promise.all([
     auction.deleteOne(),
@@ -142,4 +142,123 @@ const browseAuctions = asyncHandler(async (req, res) => {
   res.json({ success: true, auctions });
 });
 
-module.exports = { createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder };
+// GET /api/auctions/:id/report — post-auction analytics
+const getReport = asyncHandler(async (req, res) => {
+  const auction = await Auction.findById(req.params.id).lean();
+  if (!auction) throw new ApiError(404, 'Auction not found');
+
+  // Auth: admin who owns it, OR approved team-owner member
+  if (req.user.role === 'admin') {
+    if (auction.createdBy.toString() !== req.user.id) throw new ApiError(403, 'Not your auction');
+  } else if (req.user.role === 'team_owner') {
+    const membership = await AuctionMembership.findOne({
+      auctionId: auction._id, userId: req.user.id, status: 'approved',
+    });
+    if (!membership) throw new ApiError(403, 'Not a member of this auction');
+  } else {
+    throw new ApiError(403, 'Not authorised to view this report');
+  }
+
+  const [teams, players] = await Promise.all([
+    Team.find({ auctionId: auction._id })
+      .populate({ path: 'players.playerId', select: 'name role category nationality basePrice' })
+      .lean(),
+    Player.find({ auctionId: auction._id }).lean(),
+  ]);
+
+  const soldPlayers = players.filter((p) => p.status === 'sold');
+  const unsoldPlayers = players.filter((p) => p.status === 'unsold');
+
+  const teamById = {};
+  const teamRows = teams.map((t) => {
+    const totalSpent = t.initialPurse - t.remainingPurse;
+    const row = {
+      _id: t._id,
+      name: t.name,
+      shortName: t.shortName,
+      colorHex: t.colorHex,
+      initialPurse: t.initialPurse,
+      remainingPurse: t.remainingPurse,
+      totalSpent,
+      playerCount: t.players.length,
+      players: t.players.map((e) => ({
+        name: e.playerId?.name,
+        role: e.playerId?.role,
+        category: e.playerId?.category,
+        nationality: e.playerId?.nationality,
+        basePrice: e.playerId?.basePrice,
+        finalPrice: e.pricePaid,
+      })),
+    };
+    teamById[t._id.toString()] = { name: t.name, shortName: t.shortName, colorHex: t.colorHex };
+    return row;
+  });
+
+  const soldRows = soldPlayers
+    .map((p) => ({
+      _id: p._id,
+      name: p.name,
+      role: p.role,
+      category: p.category,
+      nationality: p.nationality,
+      basePrice: p.basePrice,
+      finalPrice: p.finalPrice,
+      team: teamById[p.soldToTeamId?.toString()] || null,
+    }))
+    .sort((a, b) => b.finalPrice - a.finalPrice);
+
+  const prices = soldPlayers.map((p) => p.finalPrice);
+  const totalSpent = prices.reduce((s, v) => s + v, 0);
+
+  const catMap = {};
+  players.forEach((p) => {
+    const key = p.category || 'Uncategorised';
+    if (!catMap[key]) catMap[key] = { category: key, total: 0, sold: 0, unsold: 0, totalSpent: 0 };
+    catMap[key].total++;
+    if (p.status === 'sold') { catMap[key].sold++; catMap[key].totalSpent += p.finalPrice; }
+    if (p.status === 'unsold') catMap[key].unsold++;
+  });
+  const categoryBreakdown = Object.values(catMap).map((c) => ({
+    ...c, avgPrice: c.sold > 0 ? Math.round(c.totalSpent / c.sold) : 0,
+  }));
+
+  const roleMap = {};
+  players.forEach((p) => {
+    const key = p.role || 'Unknown';
+    if (!roleMap[key]) roleMap[key] = { role: key, total: 0, sold: 0, unsold: 0, totalSpent: 0 };
+    roleMap[key].total++;
+    if (p.status === 'sold') { roleMap[key].sold++; roleMap[key].totalSpent += p.finalPrice; }
+    if (p.status === 'unsold') roleMap[key].unsold++;
+  });
+  const roleBreakdown = Object.values(roleMap).map((r) => ({
+    ...r, avgPrice: r.sold > 0 ? Math.round(r.totalSpent / r.sold) : 0,
+  }));
+
+  res.json({
+    success: true,
+    auction: {
+      name: auction.name,
+      sport: auction.sport,
+      status: auction.status,
+      currentRound: auction.currentRound,
+      currencySymbol: auction.currencySymbol,
+      currencyUnit: auction.currencyUnit,
+    },
+    summary: {
+      totalPlayers: players.length,
+      soldCount: soldPlayers.length,
+      unsoldCount: unsoldPlayers.length,
+      poolCount: players.length - soldPlayers.length - unsoldPlayers.length,
+      totalSpent,
+      avgPrice: prices.length ? Math.round(totalSpent / prices.length) : 0,
+      maxPrice: prices.length ? Math.max(...prices) : 0,
+      minPrice: prices.length ? Math.min(...prices) : 0,
+    },
+    teams: teamRows,
+    soldPlayers: soldRows,
+    categoryBreakdown,
+    roleBreakdown,
+  });
+});
+
+module.exports = { createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport };

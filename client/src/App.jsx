@@ -21,6 +21,7 @@ import AdminApprovalsPage from './pages/AdminApprovalsPage';
 import MySquadPage from './pages/MySquadPage';
 import SportTemplatesPage from './pages/SportTemplatesPage';
 import ProfilePage from './pages/ProfilePage';
+import AuctionReportPage from './pages/AuctionReportPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -64,6 +65,7 @@ const App = () => (
               <Route path='auction/:id/teams' element={<PrivateRoute><TeamsPage /></PrivateRoute>} />
               <Route path='auction/:id/my-squad' element={<PrivateRoute><MySquadPage /></PrivateRoute>} />
               <Route path='auction/:id/config' element={<PrivateRoute><AuctionConfigPage /></PrivateRoute>} />
+              <Route path='auction/:id/report' element={<PrivateRoute><AuctionReportPage /></PrivateRoute>} />
             </Route>
             <Route path='*' element={<Navigate to='/' replace />} />
           </Routes>

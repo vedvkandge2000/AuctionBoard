@@ -36,6 +36,7 @@ const Sidebar = () => {
           <NavItem to={`/auction/${auctionId}/teams`} icon='🛡️' label='Teams' />
           {isAdmin && <NavItem to={`/auction/${auctionId}/config`} icon='⚙️' label='Config' />}
           {isTeamOwner && <NavItem to={`/auction/${auctionId}/my-squad`} icon='📋' label='My Squad' end />}
+          {(isAdmin || isTeamOwner) && <NavItem to={`/auction/${auctionId}/report`} icon='📊' label='Report' />}
         </>
       )}
     </aside>

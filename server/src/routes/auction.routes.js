@@ -2,7 +2,7 @@ const express = require('express');
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
-  createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder,
+  createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport,
 } = require('../controllers/auction.controller');
 const {
   start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer,
@@ -21,6 +21,7 @@ router.patch('/:id/config', protect, requireRole('admin'), updateConfig);
 router.delete('/:id', protect, requireRole('admin'), deleteAuction);
 router.get('/:id/order', protect, getOrder);
 router.patch('/:id/order', protect, requireRole('admin'), setOrder);
+router.get('/:id/report', protect, getReport);
 
 // Flow control (admin only)
 router.post('/:id/start', protect, requireRole('admin'), start);

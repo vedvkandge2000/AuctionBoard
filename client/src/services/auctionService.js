@@ -87,3 +87,8 @@ export const approveReleaseRequest = async (id, reqId) =>
   api.post(`/auctions/${id}/release-requests/${reqId}/approve`);
 export const rejectReleaseRequest = async (id, reqId, rejectionNote = '') =>
   api.post(`/auctions/${id}/release-requests/${reqId}/reject`, { rejectionNote });
+
+export const getAuctionReport = async (id) => {
+  const { data } = await api.get(`/auctions/${id}/report`);
+  return data;
+};

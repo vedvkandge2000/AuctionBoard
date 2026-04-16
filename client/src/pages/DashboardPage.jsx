@@ -231,6 +231,11 @@ const MyAuctionsTab = ({ templateMap, navigate }) => {
             <Button size='sm' variant='ghost' onClick={() => navigate(`/auction/${auction._id}`)}>
               Open
             </Button>
+            {(auction.status === 'completed' || auction.status === 'live') && (
+              <Button size='sm' variant='ghost' onClick={() => navigate(`/auction/${auction._id}/report`)}>
+                Report
+              </Button>
+            )}
           </div>
         </div>
       ))}
@@ -742,18 +747,23 @@ const AdminDashboard = ({ templateMap, navigate }) => {
                   Open
                 </Button>
                 {auction.status === 'draft' && (
-                  <>
-                    <Button size='sm' variant='ghost' onClick={() => navigate(`/auction/${auction._id}/config`)}>
-                      Config
-                    </Button>
-                    <Button
-                      size='sm'
-                      variant='danger'
-                      onClick={() => { if (confirm('Delete this auction?')) deleteMut.mutate(auction._id); }}
-                    >
-                      Delete
-                    </Button>
-                  </>
+                  <Button size='sm' variant='ghost' onClick={() => navigate(`/auction/${auction._id}/config`)}>
+                    Config
+                  </Button>
+                )}
+                {(auction.status === 'draft' || auction.status === 'completed') && (
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    onClick={() => { if (confirm('Delete this auction? This cannot be undone.')) deleteMut.mutate(auction._id); }}
+                  >
+                    Delete
+                  </Button>
+                )}
+                {(auction.status === 'completed' || auction.status === 'live') && (
+                  <Button size='sm' variant='ghost' onClick={() => navigate(`/auction/${auction._id}/report`)}>
+                    Report
+                  </Button>
                 )}
               </div>
             </div>

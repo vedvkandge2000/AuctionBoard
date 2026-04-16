@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { setOfflineBid } from '../../services/auctionService';
+import { setOfflineBid, overrideBid } from '../../services/auctionService';
 import { useToast } from '../../context/ToastContext';
 import { calcNextBid } from '../../utils/calcBidIncrement';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -15,8 +15,24 @@ const OfflineBidPanel = ({ auction, teams }) => {
   const sym = auction?.currencySymbol || '';
   const unit = auction?.currencyUnit || '';
 
-  const nextBid = calcNextBid(auction?.currentBid ?? 0, auction?.bidIncrementTiers ?? []);
+  const basePrice = auction?.currentPlayerId?.basePrice ?? 0;
+  const noBidYet = !auction?.currentBidTeamId;
+  const nextBid = noBidYet
+    ? (basePrice || calcNextBid(auction?.currentBid ?? 0, auction?.bidIncrementTiers ?? []))
+    : calcNextBid(auction.currentBid, auction?.bidIncrementTiers ?? []);
   const canBid = isLive && hasPlayer && selectedTeamId && !loading;
+
+  const handleSellAtBase = async () => {
+    if (!canBid || !basePrice) return;
+    setLoading(true);
+    try {
+      await overrideBid(auction._id, selectedTeamId, basePrice);
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to sell at base price', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentBidTeam = teams.find(
     (t) => t._id === (auction?.currentBidTeamId?._id || auction?.currentBidTeamId)
@@ -60,7 +76,9 @@ const OfflineBidPanel = ({ auction, teams }) => {
                 )}
               </>
             ) : (
-              <p className='text-gray-400 text-sm'>Base price — {formatCurrency(auction.currentBid, sym, unit)}</p>
+              <p className='text-gray-400 text-sm'>
+                Base price — {basePrice > 0 ? formatCurrency(basePrice, sym, unit) : '—'}
+              </p>
             )}
           </div>
 
@@ -88,6 +106,16 @@ const OfflineBidPanel = ({ auction, teams }) => {
             >
               Bid {formatCurrency(nextBid, sym, unit)}
             </Button>
+
+            {noBidYet && basePrice > 0 && (
+              <button
+                disabled={!canBid}
+                onClick={handleSellAtBase}
+                className='w-full mt-2 text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 rounded-lg py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+              >
+                Sell at base price — {formatCurrency(basePrice, sym, unit)}
+              </button>
+            )}
           </div>
         </>
       )}
