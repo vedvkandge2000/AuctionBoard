@@ -18,7 +18,10 @@ const sportTemplateRoutes = require('./routes/sportTemplate.routes');
 
 const app = express();
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(express.json());
 if (NODE_ENV !== 'test') app.use(morgan('dev'));
