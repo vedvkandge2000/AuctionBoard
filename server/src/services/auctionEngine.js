@@ -9,6 +9,19 @@ const { auctionRoom, teamRoom } = require('../socket/roomManager');
 // rtmService required lazily below to avoid circular deps
 
 /**
+ * Helper: compute a team's effective purse after reserving budget for minimum squad slots.
+ */
+const getEffectivePurse = async (team, auction, auctionId) => {
+  const slotsNeeded = Math.max(0, auction.minSquadSize - team.players.length - 1);
+  if (slotsNeeded === 0) return team.remainingPurse;
+  const poolPlayers = await Player.find({ auctionId, status: 'pool' })
+    .sort({ basePrice: 1 })
+    .limit(slotsNeeded);
+  const reservedAmount = poolPlayers.reduce((sum, p) => sum + p.basePrice, 0);
+  return team.remainingPurse - reservedAmount;
+};
+
+/**
  * Start the auction (draft → live).
  */
 const startAuction = async (auctionId, userId) => {
@@ -316,10 +329,7 @@ const placeBid = async (auctionId, teamId, userId, amount) => {
   }
 
   // Purse reservation check: ensure team can still fill minimum squad
-  const slotsNeeded = Math.max(0, auction.minSquadSize - team.players.length - 1);
-  const poolPlayers = await Player.find({ auctionId, status: 'pool' }).sort({ basePrice: 1 }).limit(slotsNeeded);
-  const reservedAmount = poolPlayers.reduce((sum, p) => sum + p.basePrice, 0);
-  const effectivePurse = team.remainingPurse - reservedAmount;
+  const effectivePurse = await getEffectivePurse(team, auction, auctionId);
   if (amount > effectivePurse) {
     return { valid: false, error: 'Insufficient effective purse (minimum squad reservation applied)' };
   }
@@ -451,6 +461,15 @@ const setOfflineBid = async (auctionId, { teamId, amount }, adminId) => {
   if (!auction.currentPlayerId) throw new ApiError(400, 'No player is currently on the block');
   if (!team) throw new ApiError(404, 'Team not found');
   if (typeof amount !== 'number' || amount <= 0) throw new ApiError(400, 'amount must be a positive number');
+
+  // Budget check — same logic as live placeBid
+  if (amount > team.remainingPurse) {
+    throw new ApiError(400, `Bid exceeds team's remaining purse (${team.remainingPurse} ${auction.currencyUnit || 'units'})`);
+  }
+  const effectivePurse = await getEffectivePurse(team, auction, auctionId);
+  if (amount > effectivePurse) {
+    throw new ApiError(400, 'Bid exceeds effective purse — team needs to reserve budget for minimum squad');
+  }
 
   auction.currentBid = amount;
   auction.currentBidTeamId = teamId;

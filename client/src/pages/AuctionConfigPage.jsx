@@ -250,7 +250,7 @@ const AuctionConfigPage = () => {
               </div>
             </Field>
           </div>
-          <Field label='Player Roles (comma-separated)' hint='e.g. Batsman, Bowler, All-Rounder, Wicket-Keeper'>
+          <Field label='Player Roles (comma-separated)' hint='e.g. Batsman, Bowler, All-Rounder — leave blank to hide the role field entirely'>
             <input className={inputCls} value={form.playerRoles} onChange={(e) => handle('playerRoles', e.target.value)} />
           </Field>
         </Section>
@@ -270,7 +270,7 @@ const AuctionConfigPage = () => {
           <div className='grid grid-cols-3 gap-4'>
             <Field label='Min Squad Size'><input type='number' min='1' className={inputCls} value={form.minSquadSize} onChange={(e) => handle('minSquadSize', e.target.value)} /></Field>
             <Field label='Max Squad Size'><input type='number' min='1' className={inputCls} value={form.maxSquadSize} onChange={(e) => handle('maxSquadSize', e.target.value)} /></Field>
-            <Field label='Max Overseas Players' hint='0 = unlimited'><input type='number' min='0' className={inputCls} value={form.maxOverseasPlayers} onChange={(e) => handle('maxOverseasPlayers', e.target.value)} /></Field>
+            <Field label='Max Overseas Players' hint='0 = domestic-only sport (hides nationality field)'><input type='number' min='0' className={inputCls} value={form.maxOverseasPlayers} onChange={(e) => handle('maxOverseasPlayers', e.target.value)} /></Field>
             <Field label='Min Male Players' hint='0 = not enforced'><input type='number' min='0' className={inputCls} value={form.minMalePlayers} onChange={(e) => handle('minMalePlayers', e.target.value)} /></Field>
             <Field label='Min Female Players' hint='0 = not enforced'><input type='number' min='0' className={inputCls} value={form.minFemalePlayers} onChange={(e) => handle('minFemalePlayers', e.target.value)} /></Field>
           </div>

@@ -20,7 +20,7 @@ import Spinner from '../components/ui/Spinner';
 import Badge from '../components/ui/Badge';
 
 const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
-  const { auction, bidHistory, placeBid, lastBidError, dispatch, lastResult } = useAuction();
+  const { auction, bidHistory, placeBid, lastBidError, dispatch, lastResult, teams: liveTeams } = useAuction();
   const { isAdmin, isTeamOwner, user } = useAuth();
   const { addToast } = useToast();
   const [bidPending, setBidPending] = useState(false);
@@ -44,7 +44,7 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
 
   const liveAuction = auction || initialAuction;
   const myTeam = isTeamOwner
-    ? teams.find((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id)
+    ? liveTeams.find((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id)
     : null;
 
   const handleBid = async (amount) => {
@@ -102,7 +102,7 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
         {/* Center: Bid panel + history */}
         <div className='lg:col-span-1 space-y-4'>
           {isAdmin && liveAuction?.mode === 'offline' && (
-            <OfflineBidPanel auction={liveAuction} teams={teams} />
+            <OfflineBidPanel auction={liveAuction} teams={liveTeams} />
           )}
           {isTeamOwner && liveAuction?.mode !== 'offline' && (
             <BidPanel
@@ -121,7 +121,7 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
             <AuctionControls auction={liveAuction} onUpdate={refetch} />
           )}
           <TeamBudgetRail
-            teams={teams}
+            teams={liveTeams}
             auction={liveAuction}
             myTeamId={myTeam?._id}
           />

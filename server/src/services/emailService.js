@@ -1,23 +1,53 @@
 const nodemailer = require('nodemailer');
-const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = require('../config/env');
+const { EMAIL_SERVICE, EMAIL_USER, EMAIL_PASS, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = require('../config/env');
 const ApiError = require('../utils/ApiError');
 
 const createTransporter = () => {
-  if (!SMTP_HOST) {
-    throw new ApiError(503, 'Email service is not configured on this server. Contact the administrator.');
+  // Simple mode: EMAIL_SERVICE=gmail (or outlook, yahoo, hotmail, …)
+  if (EMAIL_SERVICE) {
+    const missing = [];
+    if (!EMAIL_USER) missing.push('EMAIL_USER');
+    if (!EMAIL_PASS) missing.push('EMAIL_PASS');
+    if (missing.length) {
+      throw new ApiError(503, `Email not configured — set ${missing.join(' and ')} in your .env file. For Gmail, EMAIL_PASS must be an App Password (not your login password).`);
+    }
+    return nodemailer.createTransport({
+      service: EMAIL_SERVICE,
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+    });
   }
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
+
+  // Custom SMTP mode: explicit host/port/credentials
+  if (SMTP_HOST) {
+    const missing = [];
+    if (!SMTP_USER) missing.push('SMTP_USER');
+    if (!SMTP_PASS) missing.push('SMTP_PASS');
+    if (missing.length) {
+      throw new ApiError(503, `Email not configured — set ${missing.join(' and ')} in your .env file.`);
+    }
+    return nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    });
+  }
+
+  throw new ApiError(503, 'Email not configured — set EMAIL_SERVICE + EMAIL_USER + EMAIL_PASS in your .env file.');
+};
+
+// Resolve the "from" address for outgoing mail
+const resolveFrom = () => {
+  if (SMTP_FROM) return SMTP_FROM;
+  if (EMAIL_USER) return `AuctionBoard <${EMAIL_USER}>`;
+  if (SMTP_USER) return `AuctionBoard <${SMTP_USER}>`;
+  return 'no-reply@auctionboard.io';
 };
 
 const sendResetEmail = async (toEmail, resetUrl) => {
   const transporter = createTransporter();
   await transporter.sendMail({
-    from: SMTP_FROM,
+    from: resolveFrom(),
     to: toEmail,
     subject: 'AuctionBoard — Reset your password',
     html: `

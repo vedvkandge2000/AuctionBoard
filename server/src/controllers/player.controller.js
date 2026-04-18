@@ -87,12 +87,15 @@ const bulkImport = asyncHandler(async (req, res) => {
   const success = [];
   const errors = [];
 
+  const hasRoles = (auction.playerRoles || []).length > 0;
+  const hasNationality = (auction.maxOverseasPlayers || 0) > 0;
+
   for (let i = 0; i < records.length; i++) {
     const row = records[i];
     const rowNum = i + 2; // 1-indexed + header row
 
-    if (!row.name || !row.role) {
-      errors.push({ row: rowNum, message: 'name and role are required' });
+    if (!row.name || (!row.role && hasRoles)) {
+      errors.push({ row: rowNum, message: hasRoles ? 'name and role are required' : 'name is required' });
       continue;
     }
 
@@ -133,7 +136,7 @@ const bulkImport = asyncHandler(async (req, res) => {
         auctionId: req.params.id,
         name: row.name,
         role: row.role,
-        nationality: row.nationality === 'overseas' ? 'overseas' : 'domestic',
+        nationality: hasNationality ? (row.nationality === 'overseas' ? 'overseas' : 'domestic') : 'domestic',
         gender,
         country: row.country || '',
         category: category || null,
@@ -160,27 +163,28 @@ const bulkImport = asyncHandler(async (req, res) => {
 // Download CSV template — generated dynamically from the auction's config
 const downloadTemplate = asyncHandler(async (req, res) => {
   const auction = await Auction.findById(req.params.id)
-    .select('name sport playerRoles playerCategories categoryBasePrices currencyUnit minMalePlayers minFemalePlayers')
+    .select('name sport playerRoles playerCategories categoryBasePrices currencyUnit maxOverseasPlayers minMalePlayers minFemalePlayers')
     .lean();
   if (!auction) throw new ApiError(404, 'Auction not found');
 
-  const roles = auction.playerRoles?.length > 0 ? auction.playerRoles : ['Player'];
+  const hasRoles = (auction.playerRoles?.length > 0);
+  const hasNationality = (auction.maxOverseasPlayers || 0) > 0;
+  const roles = hasRoles ? auction.playerRoles : [];
   const categories = auction.playerCategories || [];
-  const basePriceMap = auction.categoryBasePrices || {};
   const unit = auction.currencyUnit || 'lakh';
   const hasCategories = categories.length > 0;
   const hasGenderRules = (auction.minMalePlayers > 0 || auction.minFemalePlayers > 0);
 
-  // Minimal columns — only include what the admin actually needs to fill in:
-  // - category-based auctions: basePrice and gender are both derived from category config, so omit them
-  // - no-category auctions: basePrice is required; gender only if the auction enforces gender composition
-  const headers = ['name', 'role', 'nationality', 'setNumber'];
+  // Build headers — only include fields the admin needs to fill in
+  const headers = ['name'];
+  if (hasRoles) headers.push('role');
   if (hasCategories) {
-    headers.splice(headers.indexOf('nationality'), 0, 'category');
-    // gender only needed when a category doesn't auto-map (custom category names)
+    headers.push('category');
+    if (hasNationality) headers.push('nationality');
     const allCategoriesMapped = categories.every((c) => genderFromCategory(c) !== '');
     if (hasGenderRules && !allCategoriesMapped) headers.push('gender');
   } else {
+    if (hasNationality) headers.push('nationality');
     headers.push('basePrice');
     if (hasGenderRules) headers.push('gender');
   }
@@ -192,16 +196,15 @@ const downloadTemplate = asyncHandler(async (req, res) => {
   };
   const toRow = (cells) => cells.map(escapeCell).join(',');
 
-  const hints = [
-    `# CSV template for: ${auction.name} (${auction.sport})`,
-    `# Valid roles: ${roles.join(', ')}`,
-  ];
+  const hints = [`# CSV template for: ${auction.name} (${auction.sport})`];
+  if (hasRoles) hints.push(`# Valid roles: ${roles.join(', ')}`);
   if (hasCategories) {
     hints.push(`# Valid categories: ${categories.join(', ')} — base price is taken from auction config`);
+    hints.push(`# Only name${hasRoles ? ', role,' : ''} and category are required`);
   } else {
     hints.push(`# basePrice unit: ${unit}`);
   }
-  hints.push(`# nationality: domestic / overseas (default: domestic)`);
+  if (hasNationality) hints.push(`# nationality: domestic / overseas (default: domestic)`);
   hints.push(`# stats_* columns: rename stats_example → stats_yourStatName, add as many as needed`);
 
   const lines = [...hints, toRow(headers)];
@@ -210,23 +213,22 @@ const downloadTemplate = asyncHandler(async (req, res) => {
     categories.forEach((cat, i) => {
       const row = {
         name: `Example ${cat} Player`,
-        role: roles[i % roles.length],
-        nationality: 'domestic',
+        role: hasRoles ? roles[i % roles.length] : undefined,
+        nationality: hasNationality ? 'domestic' : undefined,
         category: cat,
-        setNumber: 1,
         gender: genderFromCategory(cat),
         stats_example: '',
       };
       lines.push(toRow(headers.map((h) => row[h] ?? '')));
     });
   } else {
-    roles.slice(0, 3).forEach((role, i) => {
+    const exampleItems = hasRoles ? roles.slice(0, 3) : ['Player 1', 'Player 2'];
+    exampleItems.forEach((label, i) => {
       const row = {
-        name: `Example ${role}`,
-        role,
-        nationality: i === 1 ? 'overseas' : 'domestic',
+        name: hasRoles ? `Example ${label}` : label,
+        role: hasRoles ? label : undefined,
+        nationality: hasNationality ? (i === 1 ? 'overseas' : 'domestic') : undefined,
         basePrice: 100,
-        setNumber: 1,
         gender: hasGenderRules ? (i % 2 === 0 ? 'male' : 'female') : '',
         stats_example: '',
       };

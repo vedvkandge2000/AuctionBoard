@@ -4,7 +4,7 @@ const playerSchema = new mongoose.Schema(
   {
     auctionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Auction', required: true },
     name: { type: String, required: true, trim: true },
-    role: { type: String, required: true, trim: true },
+    role: { type: String, default: '', trim: true },
     nationality: { type: String, enum: ['domestic', 'overseas'], default: 'domestic' },
     gender: { type: String, enum: ['male', 'female', ''], default: '' },
     country: { type: String, default: '', trim: true },

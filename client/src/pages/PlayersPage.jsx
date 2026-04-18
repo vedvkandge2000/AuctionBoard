@@ -48,17 +48,21 @@ const PlayerForm = ({ auction, player, onSave, onClose }) => {
         <Field label='Name'>
           <input required className={inputCls} value={form.name} onChange={(e) => handle('name', e.target.value)} />
         </Field>
-        <Field label='Role'>
-          <select className={inputCls} value={form.role} onChange={(e) => handle('role', e.target.value)}>
-            {(auction?.playerRoles || []).map((r) => <option key={r}>{r}</option>)}
-          </select>
-        </Field>
-        <Field label='Nationality'>
-          <select className={inputCls} value={form.nationality} onChange={(e) => handle('nationality', e.target.value)}>
-            <option value='domestic'>Domestic</option>
-            <option value='overseas'>Overseas</option>
-          </select>
-        </Field>
+        {(auction?.playerRoles?.length > 0) && (
+          <Field label='Role'>
+            <select className={inputCls} value={form.role} onChange={(e) => handle('role', e.target.value)}>
+              {auction.playerRoles.map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </Field>
+        )}
+        {(auction?.maxOverseasPlayers > 0) && (
+          <Field label='Nationality'>
+            <select className={inputCls} value={form.nationality} onChange={(e) => handle('nationality', e.target.value)}>
+              <option value='domestic'>Domestic</option>
+              <option value='overseas'>Overseas</option>
+            </select>
+          </Field>
+        )}
         <Field label='Gender (optional)'>
           <select className={inputCls} value={form.gender} onChange={(e) => handle('gender', e.target.value)}>
             <option value=''>Not specified</option>
@@ -128,7 +132,15 @@ const PlayersPage = () => {
     try {
       const result = await bulkImportPlayers(auctionId, file);
       invalidate();
-      addToast(`Imported ${result.imported} players${result.errors.length > 0 ? ` (${result.errors.length} errors)` : ''}`, result.errors.length ? 'warning' : 'success');
+      if (result.errors.length > 0) {
+        const first = result.errors[0];
+        addToast(
+          `Imported ${result.imported} — ${result.errors.length} error(s). Row ${first.row}: ${first.message}`,
+          result.imported > 0 ? 'warning' : 'error'
+        );
+      } else {
+        addToast(`Imported ${result.imported} players`, 'success');
+      }
     } catch (err) {
       addToast(err.response?.data?.message || 'Import failed', 'error');
     } finally {
