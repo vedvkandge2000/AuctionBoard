@@ -1,13 +1,148 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Mail } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ScatterChart, Scatter, CartesianGrid, Legend,
 } from 'recharts';
-import { getAuctionReport } from '../services/auctionService';
+import { getAuctionReport, getReportRecipients, shareReport } from '../services/auctionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import Spinner from '../components/ui/Spinner';
+import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ---- Share via Email Modal ----
+const ShareReportModal = ({ open, onClose, auctionId, auctionName }) => {
+  const { addToast } = useToast();
+  const [recipients, setRecipients] = useState([]); // [{ teamId, teamName, email, selected }]
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    getReportRecipients(auctionId)
+      .then((list) => {
+        setRecipients(list.map((r) => ({
+          teamId: r.teamId,
+          teamName: r.teamName,
+          email: r.ownerEmail || '',
+          selected: !!r.ownerEmail, // pre-check teams that already have owner email
+        })));
+      })
+      .catch((err) => addToast(err.response?.data?.message || 'Failed to load teams', 'error'))
+      .finally(() => setLoading(false));
+  }, [open, auctionId, addToast]);
+
+  const update = (teamId, patch) => {
+    setRecipients((prev) => prev.map((r) => (r.teamId === teamId ? { ...r, ...patch } : r)));
+  };
+
+  const toggleAll = (selected) => {
+    setRecipients((prev) => prev.map((r) => ({ ...r, selected: selected && !!r.email })));
+  };
+
+  const handleSend = async () => {
+    const picks = recipients.filter((r) => r.selected);
+    if (picks.length === 0) { addToast('Select at least one team', 'warning'); return; }
+    const invalid = picks.find((r) => !EMAIL_REGEX.test(r.email.trim()));
+    if (invalid) { addToast(`Invalid email for ${invalid.teamName}`, 'error'); return; }
+
+    setSending(true);
+    try {
+      const result = await shareReport(auctionId, picks.map((r) => ({ teamId: r.teamId, email: r.email.trim() })));
+      const sent = result.sent?.length || 0;
+      const failed = result.failed?.length || 0;
+      if (failed > 0) {
+        const first = result.failed[0];
+        addToast(
+          `Sent ${sent} — ${failed} failed. ${first.teamName || ''}: ${first.reason}`,
+          sent > 0 ? 'warning' : 'error'
+        );
+      } else {
+        addToast(`Report sent to ${sent} team(s)`, 'success');
+        onClose();
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to send', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const allSelected = recipients.length > 0 && recipients.every((r) => r.selected);
+  const someSelected = recipients.some((r) => r.selected);
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Share "${auctionName}" Report`} size='lg'>
+      {loading ? (
+        <div className='flex justify-center py-8'><Spinner /></div>
+      ) : (
+        <>
+          <p className='text-sm mb-4' style={{ color: 'var(--color-text-muted)' }}>
+            An email with the full report and each team's squad will be sent. Missing emails can be entered below.
+          </p>
+
+          <div className='flex items-center justify-between mb-3 pb-2' style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <label className='inline-flex items-center gap-2 text-xs' style={{ color: 'var(--color-text-muted)' }}>
+              <input
+                type='checkbox'
+                checked={allSelected}
+                onChange={(e) => toggleAll(e.target.checked)}
+              />
+              Select all (with email)
+            </label>
+            <span className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>
+              {recipients.filter((r) => r.selected).length} selected
+            </span>
+          </div>
+
+          <div className='space-y-2 max-h-[50vh] overflow-y-auto pr-1'>
+            {recipients.map((r) => (
+              <div
+                key={r.teamId}
+                className='flex items-center gap-3 p-2 rounded-lg'
+                style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              >
+                <input
+                  type='checkbox'
+                  checked={r.selected}
+                  onChange={(e) => update(r.teamId, { selected: e.target.checked })}
+                />
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium truncate' style={{ color: 'var(--color-text)' }}>{r.teamName}</p>
+                </div>
+                <input
+                  type='email'
+                  placeholder='owner@example.com'
+                  value={r.email}
+                  onChange={(e) => update(r.teamId, { email: e.target.value })}
+                  className='rounded-lg px-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
+                  style={{ backgroundColor: 'var(--color-surface-2, #0f172a)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+                />
+              </div>
+            ))}
+            {recipients.length === 0 && (
+              <p className='text-sm text-center py-4' style={{ color: 'var(--color-text-subtle)' }}>No teams to share with.</p>
+            )}
+          </div>
+
+          <div className='flex gap-3 justify-end pt-4 mt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
+            <Button variant='ghost' onClick={onClose} type='button'>Cancel</Button>
+            <Button onClick={handleSend} loading={sending} disabled={!someSelected}>
+              <Mail size={14} /> Send Report
+            </Button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+};
 
 const getVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -656,7 +791,9 @@ const TABS = ['Overview', 'Teams', 'Players', 'Financial'];
 
 const AuctionReportPage = () => {
   const { id: auctionId } = useParams();
+  const { isAdmin } = useAuth();
   const [tab, setTab] = useState('Overview');
+  const [showShare, setShowShare] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['auction-report', auctionId],
@@ -687,21 +824,37 @@ const AuctionReportPage = () => {
   return (
     <div className='animate-fade-in space-y-6'>
       {/* Header */}
-      <div>
-        <div className='flex items-center gap-3 mb-1'>
-          <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>{auction.name}</h1>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border`} style={
-            auction.status === 'completed'
-              ? { backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }
-              : { backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success-text)', borderColor: 'var(--color-success-border)' }
-          }>
-            {auction.status}
-          </span>
+      <div className='flex flex-wrap items-start gap-3'>
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-center gap-3 mb-1'>
+            <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>{auction.name}</h1>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium border`} style={
+              auction.status === 'completed'
+                ? { backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }
+                : { backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success-text)', borderColor: 'var(--color-success-border)' }
+            }>
+              {auction.status}
+            </span>
+          </div>
+          <p className='text-sm capitalize' style={{ color: 'var(--color-text-muted)' }}>
+            {auction.sport} · Round {auction.currentRound} · {summary.soldCount} players sold
+          </p>
         </div>
-        <p className='text-sm capitalize' style={{ color: 'var(--color-text-muted)' }}>
-          {auction.sport} · Round {auction.currentRound} · {summary.soldCount} players sold
-        </p>
+        {isAdmin && (
+          <Button size='sm' variant='ghost' onClick={() => setShowShare(true)}>
+            <Mail size={14} /> Share via Email
+          </Button>
+        )}
       </div>
+
+      {isAdmin && (
+        <ShareReportModal
+          open={showShare}
+          onClose={() => setShowShare(false)}
+          auctionId={auctionId}
+          auctionName={auction.name}
+        />
+      )}
 
       {/* Tabs */}
       <div className='flex gap-1 rounded-xl p-1 w-fit' style={{ backgroundColor: 'var(--color-surface)' }}>

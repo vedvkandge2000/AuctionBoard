@@ -2,10 +2,10 @@ const express = require('express');
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
-  createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport,
+  createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport, getReportRecipients, shareReport,
 } = require('../controllers/auction.controller');
 const {
-  start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer,
+  start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer, reverseBid,
 } = require('../controllers/auctionFlow.controller');
 const {
   createRequest, listRequests, approveRequest, rejectRequest,
@@ -22,6 +22,8 @@ router.delete('/:id', protect, requireRole('admin'), deleteAuction);
 router.get('/:id/order', protect, getOrder);
 router.patch('/:id/order', protect, requireRole('admin'), setOrder);
 router.get('/:id/report', protect, getReport);
+router.get('/:id/report/recipients', protect, requireRole('admin'), getReportRecipients);
+router.post('/:id/report/share', protect, requireRole('admin'), shareReport);
 
 // Flow control (admin only)
 router.post('/:id/start', protect, requireRole('admin'), start);
@@ -34,6 +36,7 @@ router.post('/:id/unsold', protect, requireRole('admin'), unsold);
 router.post('/:id/override-bid', protect, requireRole('admin'), overrideBid);
 router.post('/:id/advance-round', protect, requireRole('admin'), advanceRound);
 router.post('/:id/offline-bid', protect, requireRole('admin'), setOfflineBid);
+router.post('/:id/reverse-bid', protect, requireRole('admin'), reverseBid);
 router.post('/:id/players/:pid/release', protect, requireRole('admin'), releasePlayer);
 
 // Player release request flow

@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Play, SkipForward, Hammer, X, Pause, RefreshCw, Flag } from 'lucide-react';
+import { Play, SkipForward, Hammer, X, Pause, RefreshCw, Flag, Undo2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import * as auctionService from '../../services/auctionService';
 import { useToast } from '../../context/ToastContext';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 const AuctionControls = ({ auction, onUpdate }) => {
   const { addToast } = useToast();
-  const { status, _id: id, currentRound = 1, unsoldPlayerIds = [] } = auction;
+  const { status, _id: id, currentRound = 1, unsoldPlayerIds = [], currentBid, currentBidTeamId, currencySymbol, currencyUnit } = auction;
   const [confirmNextRound, setConfirmNextRound] = useState(false);
+  const [confirmUndoBid, setConfirmUndoBid] = useState(false);
+  const hasBidToUndo = status === 'live' && !!currentBidTeamId;
 
   const act = async (fn, label) => {
     try {
@@ -63,6 +66,11 @@ const AuctionControls = ({ auction, onUpdate }) => {
             <Button size='sm' variant='ghost' onClick={() => act(auctionService.markUnsold, 'Unsold')}>
               <X size={14} /> Unsold
             </Button>
+            {hasBidToUndo && (
+              <Button size='sm' variant='ghost' onClick={() => setConfirmUndoBid(true)}>
+                <Undo2 size={14} /> Undo Bid
+              </Button>
+            )}
             <Button size='sm' variant='warning' onClick={() => act(auctionService.pauseAuction, 'Paused')}>
               <Pause size={14} /> Pause
             </Button>
@@ -84,6 +92,43 @@ const AuctionControls = ({ auction, onUpdate }) => {
           </Button>
         )}
       </div>
+
+      {/* Undo Bid confirmation modal */}
+      <Modal
+        open={confirmUndoBid}
+        onClose={() => setConfirmUndoBid(false)}
+        title='Undo Last Bid?'
+        size='sm'
+      >
+        <p className='text-sm mb-5' style={{ color: 'var(--color-text-muted)' }}>
+          {currentBidTeamId ? (
+            <>
+              Reverse the last bid from <strong>{currentBidTeamId.name || 'current bidder'}</strong>
+              {typeof currentBid === 'number' && currentBid > 0 && (
+                <> of <strong>{formatCurrency(currentBid, currencySymbol || '₹', currencyUnit || 'lakh')}</strong></>
+              )}?
+              {' '}The previous bid (if any) will be restored.
+            </>
+          ) : (
+            'No bid to undo.'
+          )}
+        </p>
+        <div className='flex gap-3 justify-end'>
+          <Button size='sm' variant='ghost' onClick={() => setConfirmUndoBid(false)}>
+            Cancel
+          </Button>
+          <Button
+            size='sm'
+            variant='primary'
+            onClick={() => {
+              setConfirmUndoBid(false);
+              act(auctionService.reverseLatestBid, 'Last bid reversed');
+            }}
+          >
+            Undo Bid
+          </Button>
+        </div>
+      </Modal>
 
       {/* Next Round confirmation modal */}
       <Modal

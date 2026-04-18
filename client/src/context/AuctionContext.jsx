@@ -37,6 +37,20 @@ const reducer = (state, action) => {
         bidHistory: [{ ...action, seq: nextSeq }, ...state.bidHistory].slice(0, 50),
       };
     }
+    case 'BID_REVERSED': {
+      const teamRef = action.currentBidTeamId
+        ? (state.teams.find((t) => t._id === action.currentBidTeamId) || { _id: action.currentBidTeamId })
+        : null;
+      return {
+        ...state,
+        auction: {
+          ...state.auction,
+          currentBid: action.currentBid,
+          currentBidTeamId: teamRef,
+        },
+        bidHistory: state.bidHistory.slice(1),
+      };
+    }
     case 'SOLD':
       return {
         ...state,
@@ -122,6 +136,7 @@ export const AuctionProvider = ({ auctionId, initialTeams = [], children }) => {
     socket.on('auction:state_update', ({ auction }) => dispatch({ type: 'STATE_UPDATE', auction }));
     socket.on('auction:player_live', ({ player, basePrice, teamMaxBids }) => dispatch({ type: 'PLAYER_LIVE', player, basePrice, teamMaxBids }));
     socket.on('auction:bid_placed', (data) => dispatch({ type: 'BID_PLACED', ...data }));
+    socket.on('auction:bid_reversed', (data) => dispatch({ type: 'BID_REVERSED', ...data }));
     socket.on('auction:sold', (data) => dispatch({ type: 'SOLD', player: data?.player }));
     socket.on('auction:unsold', (data) => dispatch({ type: 'UNSOLD', player: data?.player }));
     socket.on('auction:paused', () => dispatch({ type: 'AUCTION_STATUS', status: 'paused' }));
@@ -145,6 +160,7 @@ export const AuctionProvider = ({ auctionId, initialTeams = [], children }) => {
       socket.off('auction:state_update');
       socket.off('auction:player_live');
       socket.off('auction:bid_placed');
+      socket.off('auction:bid_reversed');
       socket.off('auction:sold');
       socket.off('auction:unsold');
       socket.off('auction:paused');

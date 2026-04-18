@@ -77,4 +77,10 @@ const setOfflineBid = asyncHandler(async (req, res) => {
   res.json({ success: true, ...result });
 });
 
-module.exports = { start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer };
+const reverseBid = asyncHandler(async (req, res) => {
+  await requireAuctionOwner(req.params.id, req.user.id);
+  const result = await auctionEngine.reverseLatestBid(req.params.id, req.user.id);
+  res.json({ success: true, ...result });
+});
+
+module.exports = { start, pause, resume, end, nextPlayer, sold, unsold, overrideBid, advanceRound, setOfflineBid, releasePlayer, reverseBid };

@@ -10,6 +10,7 @@ const bidEventSchema = new mongoose.Schema(
       type: String,
       enum: [
         'bid',
+        'bid_reversed',
         'sold',
         'unsold',
         'rtm_exercised',

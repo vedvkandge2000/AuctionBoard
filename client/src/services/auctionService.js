@@ -73,6 +73,8 @@ export const advanceRound = async (id) =>
 export const setOfflineBid = async (id, teamId, amount) =>
   api.post(`/auctions/${id}/offline-bid`, { teamId, amount });
 
+export const reverseLatestBid = async (id) => api.post(`/auctions/${id}/reverse-bid`);
+
 export const releasePlayerDirect = async (auctionId, playerId) =>
   api.post(`/auctions/${auctionId}/players/${playerId}/release`);
 
@@ -90,5 +92,15 @@ export const rejectReleaseRequest = async (id, reqId, rejectionNote = '') =>
 
 export const getAuctionReport = async (id) => {
   const { data } = await api.get(`/auctions/${id}/report`);
+  return data;
+};
+
+export const getReportRecipients = async (id) => {
+  const { data } = await api.get(`/auctions/${id}/report/recipients`);
+  return data.recipients;
+};
+
+export const shareReport = async (id, recipients) => {
+  const { data } = await api.post(`/auctions/${id}/report/share`, { recipients });
   return data;
 };

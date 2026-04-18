@@ -495,4 +495,58 @@ const setOfflineBid = async (auctionId, { teamId, amount }, adminId) => {
   return { currentBid: amount, currentBidTeamId: teamId };
 };
 
-module.exports = { startAuction, pauseAuction, resumeAuction, endAuction, putNextPlayer, markSold, markUnsold, placeBid, releasePlayer, advanceRound, setOfflineBid };
+/**
+ * Reverse the latest bid on the current player. Admin-only.
+ * Restores auction.currentBid / currentBidTeamId to the previous bid (or base price if none),
+ * and logs a 'bid_reversed' BidEvent for audit.
+ */
+const reverseLatestBid = async (auctionId, userId) => {
+  const auction = await Auction.findById(auctionId);
+  if (!auction) throw new ApiError(404, 'Auction not found');
+  if (auction.status !== 'live') throw new ApiError(400, 'Auction is not live');
+  if (!auction.currentPlayerId) throw new ApiError(400, 'No player is currently on the block');
+  if (!auction.currentBidTeamId) throw new ApiError(400, 'No bid to reverse');
+
+  // Find the last two 'bid' events for the current player (chronological DESC)
+  const recentBids = await BidEvent.find({
+    auctionId,
+    playerId: auction.currentPlayerId,
+    eventType: 'bid',
+  }).sort({ createdAt: -1 }).limit(2);
+
+  if (recentBids.length === 0) throw new ApiError(400, 'No bid to reverse');
+
+  const reversed = recentBids[0];
+  const previous = recentBids[1] || null;
+
+  // Restore state: previous bid, or base price + null team if this was the first bid
+  if (previous) {
+    auction.currentBid = previous.amount;
+    auction.currentBidTeamId = previous.teamId;
+  } else {
+    const player = await Player.findById(auction.currentPlayerId).select('basePrice');
+    auction.currentBid = player?.basePrice || 0;
+    auction.currentBidTeamId = null;
+  }
+  await auction.save();
+
+  await BidEvent.create({
+    auctionId,
+    playerId: auction.currentPlayerId,
+    teamId: reversed.teamId,
+    amount: reversed.amount,
+    eventType: 'bid_reversed',
+    triggeredBy: userId,
+  });
+
+  getIO().to(auctionRoom(auctionId)).emit('auction:bid_reversed', {
+    reversedTeamId: reversed.teamId,
+    reversedAmount: reversed.amount,
+    currentBid: auction.currentBid,
+    currentBidTeamId: auction.currentBidTeamId,
+  });
+
+  return { currentBid: auction.currentBid, currentBidTeamId: auction.currentBidTeamId };
+};
+
+module.exports = { startAuction, pauseAuction, resumeAuction, endAuction, putNextPlayer, markSold, markUnsold, placeBid, releasePlayer, advanceRound, setOfflineBid, reverseLatestBid };

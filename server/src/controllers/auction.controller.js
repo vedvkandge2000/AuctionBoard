@@ -7,6 +7,10 @@ const PlayerRegistration = require('../models/PlayerRegistration');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const requireAuctionOwner = require('../utils/requireAuctionOwner');
+const { sendAuctionReportEmail } = require('../services/emailService');
+const { CLIENT_URL } = require('../config/env');
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Create a new auction
 const createAuction = asyncHandler(async (req, res) => {
@@ -261,4 +265,88 @@ const getReport = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport };
+// GET /api/auctions/:id/report/recipients — admin-only list of teams with owner email
+const getReportRecipients = asyncHandler(async (req, res) => {
+  await requireAuctionOwner(req.params.id, req.user.id);
+  const teams = await Team.find({ auctionId: req.params.id })
+    .populate({ path: 'ownerId', select: 'email' })
+    .select('_id name shortName ownerId')
+    .lean();
+  const recipients = teams.map((t) => ({
+    teamId: t._id,
+    teamName: t.name,
+    shortName: t.shortName,
+    ownerEmail: t.ownerId?.email || '',
+  }));
+  res.json({ success: true, recipients });
+});
+
+// POST /api/auctions/:id/report/share — admin-only, send report email per team
+const shareReport = asyncHandler(async (req, res) => {
+  await requireAuctionOwner(req.params.id, req.user.id);
+  const { recipients } = req.body;
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    throw new ApiError(400, 'recipients array is required');
+  }
+
+  const auction = await Auction.findById(req.params.id).lean();
+  if (!auction) throw new ApiError(404, 'Auction not found');
+
+  const teams = await Team.find({ auctionId: auction._id })
+    .populate({ path: 'players.playerId', select: 'name role category nationality basePrice' })
+    .lean();
+
+  const players = await Player.find({ auctionId: auction._id }).select('status finalPrice').lean();
+  const soldPlayers = players.filter((p) => p.status === 'sold');
+  const summary = {
+    totalPlayers: players.length,
+    soldCount: soldPlayers.length,
+    unsoldCount: players.filter((p) => p.status === 'unsold').length,
+    totalSpent: soldPlayers.reduce((s, p) => s + (p.finalPrice || 0), 0),
+  };
+
+  const teamById = Object.fromEntries(teams.map((t) => [t._id.toString(), t]));
+  const reportUrl = `${CLIENT_URL}/auctions/${auction._id}/report`;
+
+  const sent = [];
+  const failed = [];
+
+  for (const r of recipients) {
+    const email = (r.email || '').trim();
+    const team = teamById[r.teamId];
+    if (!team) { failed.push({ teamId: r.teamId, reason: 'Team not found' }); continue; }
+    if (!EMAIL_REGEX.test(email)) { failed.push({ teamId: r.teamId, teamName: team.name, reason: 'Invalid email' }); continue; }
+
+    const teamPayload = {
+      name: team.name,
+      totalSpent: team.initialPurse - team.remainingPurse,
+      remainingPurse: team.remainingPurse,
+      playerCount: team.players.length,
+      players: team.players.map((e) => ({
+        name: e.playerId?.name,
+        role: e.playerId?.role,
+        category: e.playerId?.category,
+        finalPrice: e.pricePaid,
+      })),
+    };
+
+    try {
+      await sendAuctionReportEmail(email, {
+        auctionName: auction.name,
+        sport: auction.sport,
+        team: teamPayload,
+        summary,
+        reportUrl,
+        currencySymbol: auction.currencySymbol,
+        currencyUnit: auction.currencyUnit,
+      });
+      sent.push({ teamId: r.teamId, teamName: team.name, email });
+    } catch (err) {
+      failed.push({ teamId: r.teamId, teamName: team.name, reason: err.message || 'Send failed' });
+    }
+  }
+
+  res.json({ success: true, sent, failed });
+});
+
+module.exports = { createAuction, getAuction, listAuctions, browseAuctions, updateConfig, deleteAuction, getOrder, setOrder, getReport, getReportRecipients, shareReport };
