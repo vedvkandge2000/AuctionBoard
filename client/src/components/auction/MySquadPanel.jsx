@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '../../context/ToastContext';
 import { useAuction } from '../../context/AuctionContext';
@@ -25,7 +26,6 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
     enabled: open && !!myTeam,
   });
 
-  // Refresh squad when a release is approved (purse refunded)
   useEffect(() => {
     if (squadRefreshAt && open) refetch();
   }, [squadRefreshAt]);
@@ -46,7 +46,6 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
 
   const players = squadData?.players || [];
 
-  // Check which players have a pending release request from this team
   const pendingPlayerIds = new Set(
     releaseRequests
       .filter((r) => (r.teamId?._id || r.teamId) === myTeam?._id)
@@ -54,29 +53,47 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
   );
 
   return (
-    <div className='bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden'>
+    <div
+      className='rounded-2xl overflow-hidden'
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
       <button
-        className='w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-gray-800 transition-colors'
+        className='w-full flex items-center justify-between px-4 py-3 text-sm transition-colors'
+        style={{ color: 'var(--color-text)' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-sunken)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         onClick={() => setOpen((v) => !v)}
       >
         <div className='flex items-center gap-2'>
-          <span className='text-gray-300 font-medium'>My Squad</span>
-          <span className='text-gray-500 text-xs'>({players.length} players)</span>
+          <span className='font-medium'>My Squad</span>
+          <span className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>
+            ({players.length} players)
+          </span>
         </div>
         <div className='flex items-center gap-2'>
-          <span className='text-indigo-400 text-xs font-medium'>
+          <span className='text-xs font-medium' style={{ color: 'var(--color-accent)' }}>
             {formatCurrency(myTeam?.remainingPurse || 0, symbol, unit)} left
           </span>
-          <span className='text-gray-500'>{open ? '▲' : '▼'}</span>
+          {open
+            ? <ChevronUp size={16} style={{ color: 'var(--color-text-muted)' }} />
+            : <ChevronDown size={16} style={{ color: 'var(--color-text-muted)' }} />}
         </div>
       </button>
 
       {open && (
-        <div className='border-t border-gray-800 p-4 max-h-80 overflow-y-auto'>
+        <div
+          className='p-4 max-h-80 overflow-y-auto'
+          style={{ borderTop: '1px solid var(--color-border)' }}
+        >
           {isLoading ? (
             <div className='flex justify-center py-6'><Spinner /></div>
           ) : players.length === 0 ? (
-            <p className='text-gray-500 text-sm text-center py-4'>No players in your squad yet</p>
+            <p className='text-sm text-center py-4' style={{ color: 'var(--color-text-subtle)' }}>
+              No players in your squad yet
+            </p>
           ) : (
             <div className='space-y-2'>
               {players.map((entry) => {
@@ -85,26 +102,46 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
                 const isPending = pendingPlayerIds.has(p._id);
 
                 return (
-                  <div key={p._id} className='bg-gray-800 rounded-xl p-3'>
+                  <div
+                    key={p._id}
+                    className='rounded-xl p-3'
+                    style={{ backgroundColor: 'var(--color-surface-sunken)' }}
+                  >
                     <div className='flex items-center justify-between gap-3'>
                       <div className='min-w-0'>
                         <div className='flex items-center gap-2 flex-wrap'>
-                          <span className='text-white text-sm font-medium'>{p.name}</span>
+                          <span className='text-sm font-medium' style={{ color: 'var(--color-text)' }}>
+                            {p.name}
+                          </span>
                           {p.category && (
-                            <span className='text-xs bg-indigo-900/50 text-indigo-300 px-1.5 py-0.5 rounded'>
+                            <span
+                              className='text-xs px-1.5 py-0.5 rounded'
+                              style={{ backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}
+                            >
                               {p.category}
                             </span>
                           )}
-                          {p.role && <span className='text-gray-400 text-xs'>{p.role}</span>}
+                          {p.role && (
+                            <span className='text-xs' style={{ color: 'var(--color-text-muted)' }}>
+                              {p.role}
+                            </span>
+                          )}
                         </div>
-                        <p className='text-green-400 text-xs mt-0.5'>
+                        <p className='text-xs mt-0.5' style={{ color: 'var(--color-success-text)' }}>
                           Paid: {formatCurrency(entry.pricePaid, symbol, unit)}
                         </p>
                       </div>
 
                       <div className='flex-shrink-0'>
                         {isPending ? (
-                          <span className='text-yellow-400 text-xs bg-yellow-900/30 border border-yellow-800/40 px-2 py-1 rounded-lg'>
+                          <span
+                            className='text-xs px-2 py-1 rounded-lg'
+                            style={{
+                              backgroundColor: 'var(--color-warning-bg)',
+                              color: 'var(--color-warning-text)',
+                              border: '1px solid var(--color-warning)',
+                            }}
+                          >
                             Release pending
                           </span>
                         ) : requestingId === p._id ? (
@@ -114,7 +151,12 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
                               value={reason}
                               onChange={(e) => setReason(e.target.value)}
                               placeholder='Reason (optional)'
-                              className='bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs w-40 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+                              className='rounded px-2 py-1 text-xs w-40 focus:outline-none'
+                              style={{
+                                backgroundColor: 'var(--color-surface)',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text)',
+                              }}
                             />
                             <div className='flex gap-1'>
                               <Button
@@ -133,7 +175,19 @@ const MySquadPanel = ({ auctionId, auction, myTeam }) => {
                         ) : (
                           <button
                             onClick={() => setRequestingId(p._id)}
-                            className='text-gray-400 hover:text-yellow-400 text-xs px-2 py-1 rounded border border-gray-700 hover:border-yellow-700 transition-colors'
+                            className='text-xs px-2 py-1 rounded border transition-colors'
+                            style={{
+                              color: 'var(--color-text-muted)',
+                              borderColor: 'var(--color-border)',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'var(--color-warning-text)';
+                              e.currentTarget.style.borderColor = 'var(--color-warning)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = 'var(--color-text-muted)';
+                              e.currentTarget.style.borderColor = 'var(--color-border)';
+                            }}
                           >
                             Request Release
                           </button>

@@ -10,26 +10,35 @@ import FieldError from '../components/ui/FieldError';
 import { validateName, validatePassword, validatePasswordMatch } from '../utils/validation';
 
 const ROLE_BADGE = { admin: 'indigo', team_owner: 'green', viewer: 'default' };
-const STATUS_BADGE = { pending: 'yellow', approved: 'green', rejected: 'red', na: 'default' };
+
+const SectionCard = ({ title, children }) => (
+  <div
+    className='rounded-xl p-6'
+    style={{
+      backgroundColor: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
+    }}
+  >
+    <h2 className='font-semibold mb-4' style={{ color: 'var(--color-text)' }}>{title}</h2>
+    {children}
+  </div>
+);
 
 const ProfilePage = () => {
   const { user, logout, updateUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  // Edit name
   const [nameVal, setNameVal] = useState(user?.name || '');
   const [nameError, setNameError] = useState(null);
   const [nameSaving, setNameSaving] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
 
-  // Change password
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwErrors, setPwErrors] = useState({ oldPassword: null, newPassword: null, confirmPassword: null });
   const [pwLoading, setPwLoading] = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
 
-  // Delete account
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState(null);
@@ -61,7 +70,6 @@ const ProfilePage = () => {
     };
     setPwErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
-
     setPwLoading(true);
     try {
       await changePassword(pwForm);
@@ -91,106 +99,105 @@ const ProfilePage = () => {
 
   return (
     <div className='max-w-2xl mx-auto space-y-6'>
-      <h1 className='text-2xl font-bold text-white'>My Profile</h1>
+      <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>My Profile</h1>
 
-      {/* Account Info */}
-      <div className='bg-gray-900 border border-gray-800 rounded-xl p-6'>
-        <h2 className='text-white font-semibold mb-4'>Account Info</h2>
+      <SectionCard title='Account Info'>
         <dl className='space-y-3'>
           <div className='flex justify-between items-center'>
-            <dt className='text-gray-400 text-sm'>Email</dt>
-            <dd className='text-white text-sm'>{user?.email}</dd>
+            <dt className='text-sm' style={{ color: 'var(--color-text-muted)' }}>Email</dt>
+            <dd className='text-sm' style={{ color: 'var(--color-text)' }}>{user?.email}</dd>
           </div>
           <div className='flex justify-between items-center'>
-            <dt className='text-gray-400 text-sm'>Role</dt>
+            <dt className='text-sm' style={{ color: 'var(--color-text-muted)' }}>Role</dt>
             <dd><Badge variant={ROLE_BADGE[user?.role] || 'default'}>{user?.role?.replace('_', ' ')}</Badge></dd>
           </div>
         </dl>
-      </div>
+      </SectionCard>
 
-      {/* Edit Name */}
-      <div className='bg-gray-900 border border-gray-800 rounded-xl p-6'>
-        <h2 className='text-white font-semibold mb-4'>Display Name</h2>
+      <SectionCard title='Display Name'>
         <form onSubmit={handleSaveName} className='flex gap-3 items-start'>
           <div className='flex-1'>
             <input
               type='text'
               value={nameVal}
               onChange={(e) => { setNameVal(e.target.value); setNameError(null); }}
-              className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+              className='w-full px-3 py-2.5 text-sm rounded-lg'
             />
             <FieldError message={nameError} />
           </div>
           <Button type='submit' loading={nameSaving} size='sm'>Save</Button>
         </form>
-        {nameSaved && <p className='text-green-400 text-xs mt-2'>Name updated successfully.</p>}
-      </div>
+        {nameSaved && (
+          <p className='text-xs mt-2' style={{ color: 'var(--color-success-text)' }}>
+            Name updated successfully.
+          </p>
+        )}
+      </SectionCard>
 
-      {/* Change Password */}
-      <div className='bg-gray-900 border border-gray-800 rounded-xl p-6'>
-        <h2 className='text-white font-semibold mb-4'>Change Password</h2>
+      <SectionCard title='Change Password'>
         <form onSubmit={handleChangePassword} className='space-y-3'>
-          <div>
-            <label className='block text-gray-400 text-sm mb-1'>Current Password</label>
-            <input
-              type='password'
-              value={pwForm.oldPassword}
-              onChange={(e) => { setPwForm({ ...pwForm, oldPassword: e.target.value }); setPwErrors({ ...pwErrors, oldPassword: null }); }}
-              className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-              placeholder='••••••••'
-            />
-            <FieldError message={pwErrors.oldPassword} />
-          </div>
-          <div>
-            <label className='block text-gray-400 text-sm mb-1'>New Password</label>
-            <input
-              type='password'
-              value={pwForm.newPassword}
-              onChange={(e) => { setPwForm({ ...pwForm, newPassword: e.target.value }); setPwErrors({ ...pwErrors, newPassword: null }); }}
-              className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-              placeholder='Min 8 characters'
-            />
-            <FieldError message={pwErrors.newPassword} />
-          </div>
-          <div>
-            <label className='block text-gray-400 text-sm mb-1'>Confirm New Password</label>
-            <input
-              type='password'
-              value={pwForm.confirmPassword}
-              onChange={(e) => { setPwForm({ ...pwForm, confirmPassword: e.target.value }); setPwErrors({ ...pwErrors, confirmPassword: null }); }}
-              className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-              placeholder='Repeat new password'
-            />
-            <FieldError message={pwErrors.confirmPassword} />
-          </div>
+          {[
+            { key: 'oldPassword',     label: 'Current Password',      placeholder: '••••••••' },
+            { key: 'newPassword',     label: 'New Password',           placeholder: 'Min 8 characters' },
+            { key: 'confirmPassword', label: 'Confirm New Password',   placeholder: 'Repeat new password' },
+          ].map(({ key, label, placeholder }) => (
+            <div key={key}>
+              <label className='block text-sm mb-1' style={{ color: 'var(--color-text-muted)' }}>
+                {label}
+              </label>
+              <input
+                type='password'
+                value={pwForm[key]}
+                onChange={(e) => { setPwForm({ ...pwForm, [key]: e.target.value }); setPwErrors({ ...pwErrors, [key]: null }); }}
+                className='w-full px-3 py-2.5 text-sm rounded-lg'
+                placeholder={placeholder}
+              />
+              <FieldError message={pwErrors[key]} />
+            </div>
+          ))}
           <Button type='submit' loading={pwLoading}>Update Password</Button>
         </form>
-        {pwSuccess && <p className='text-green-400 text-xs mt-2'>Password changed successfully.</p>}
-      </div>
+        {pwSuccess && (
+          <p className='text-xs mt-2' style={{ color: 'var(--color-success-text)' }}>
+            Password changed successfully.
+          </p>
+        )}
+      </SectionCard>
 
       {/* Danger Zone */}
-      <div className='border border-red-900 rounded-xl p-6'>
-        <h2 className='text-red-400 font-semibold mb-2'>Danger Zone</h2>
-        <p className='text-gray-400 text-sm mb-4'>
+      <div
+        className='rounded-xl p-6'
+        style={{ border: '1px solid var(--color-danger)' }}
+      >
+        <h2 className='font-semibold mb-2' style={{ color: 'var(--color-danger-text)' }}>
+          Danger Zone
+        </h2>
+        <p className='text-sm mb-4' style={{ color: 'var(--color-text-muted)' }}>
           Permanently delete your account. This action cannot be undone.
         </p>
         <Button variant='danger' onClick={() => setDeleteOpen(true)}>Delete Account</Button>
       </div>
 
-      {/* Delete confirmation modal */}
-      <Modal open={deleteOpen} onClose={() => { setDeleteOpen(false); setDeletePassword(''); setDeleteError(null); }} title='Delete Account' size='sm'>
-        <p className='text-gray-400 text-sm mb-4'>
+      <Modal
+        open={deleteOpen}
+        onClose={() => { setDeleteOpen(false); setDeletePassword(''); setDeleteError(null); }}
+        title='Delete Account'
+        size='sm'
+      >
+        <p className='text-sm mb-4' style={{ color: 'var(--color-text-muted)' }}>
           This will permanently delete your account. Enter your password to confirm.
         </p>
         <input
           type='password'
           value={deletePassword}
           onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
-          className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 mb-2'
+          className='w-full px-3 py-2.5 text-sm rounded-lg mb-2'
           placeholder='Your current password'
           autoFocus
         />
-        {deleteError && <p className='text-red-400 text-xs mb-3'>{deleteError}</p>}
+        {deleteError && (
+          <p className='text-xs mb-3' style={{ color: 'var(--color-danger-text)' }}>{deleteError}</p>
+        )}
         <div className='flex gap-3 mt-4'>
           <Button variant='danger' loading={deleteLoading} onClick={handleDeleteAccount} className='flex-1'>
             Delete permanently

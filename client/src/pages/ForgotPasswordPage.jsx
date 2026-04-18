@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Gavel, Mail } from 'lucide-react';
 import { forgotPassword } from '../services/authService';
 import Button from '../components/ui/Button';
 import FieldError from '../components/ui/FieldError';
@@ -17,7 +18,6 @@ const ForgotPasswordPage = () => {
     e.preventDefault();
     const err = validateEmail(email);
     if (err) { setEmailError(err); return; }
-
     setLoading(true);
     setFormError(null);
     try {
@@ -32,58 +32,97 @@ const ForgotPasswordPage = () => {
 
   return (
     <PublicLayout>
-    <div className='flex items-center justify-center p-4 py-12'>
-      <div className='w-full max-w-sm animate-fade-in'>
-        <div className='text-center mb-8'>
-          <div className='text-6xl mb-3'>🏏</div>
-          <h1 className='text-2xl font-bold text-white'>AuctionBoard</h1>
-          <p className='text-gray-400 text-sm mt-1'>Reset your password</p>
-        </div>
-
-        <div className='bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl'>
-          {submitted ? (
-            <div className='text-center'>
-              <div className='text-4xl mb-4'>📬</div>
-              <h2 className='text-white font-semibold mb-2'>Check your inbox</h2>
-              <p className='text-gray-400 text-sm mb-6'>
-                If that email is registered, you'll receive a reset link shortly.
-              </p>
-              <Link to='/login' className='text-indigo-400 hover:text-indigo-300 text-sm underline'>
-                Back to Login
-              </Link>
+      <div className='flex items-center justify-center p-4 py-12'>
+        <div className='w-full max-w-sm animate-fade-in'>
+          <div className='text-center mb-8'>
+            <div
+              className='inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-md'
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Gavel size={30} color='white' />
             </div>
-          ) : (
-            <>
-              <h2 className='text-white font-semibold mb-2'>Forgot your password?</h2>
-              <p className='text-gray-400 text-sm mb-5'>
-                Enter the email address for your account and we'll send you a reset link.
-              </p>
-              <form onSubmit={handleSubmit} className='space-y-4'>
-                <div>
-                  <label className='block text-gray-400 text-sm mb-1.5'>Email address</label>
-                  <input
-                    type='text'
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
-                    className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                    placeholder='you@example.com'
-                    autoFocus
-                  />
-                  <FieldError message={emailError} />
+            <h1 className='text-2xl font-extrabold' style={{ color: 'var(--color-primary)' }}>
+              AuctionBoard
+            </h1>
+            <p className='text-sm mt-1' style={{ color: 'var(--color-text-muted)' }}>
+              Reset your password
+            </p>
+          </div>
+
+          <div
+            className='rounded-2xl p-6'
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            {submitted ? (
+              <div className='text-center'>
+                <div
+                  className='inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4'
+                  style={{ backgroundColor: 'var(--color-success-bg)' }}
+                >
+                  <Mail size={26} style={{ color: 'var(--color-success-text)' }} />
                 </div>
-                {formError && <p className='text-red-400 text-xs'>{formError}</p>}
-                <Button type='submit' loading={loading} className='w-full' size='lg'>
-                  Send Reset Link
-                </Button>
-              </form>
-              <p className='text-center text-gray-500 text-xs mt-4'>
-                <Link to='/login' className='text-indigo-400 hover:text-indigo-300'>Back to Login</Link>
-              </p>
-            </>
-          )}
+                <h2 className='font-semibold mb-2' style={{ color: 'var(--color-text)' }}>
+                  Check your inbox
+                </h2>
+                <p className='text-sm mb-6' style={{ color: 'var(--color-text-muted)' }}>
+                  If that email is registered, you'll receive a reset link shortly.
+                </p>
+                <Link
+                  to='/login'
+                  className='text-sm underline transition-opacity hover:opacity-70'
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  Back to Login
+                </Link>
+              </div>
+            ) : (
+              <>
+                <h2 className='font-semibold mb-2' style={{ color: 'var(--color-text)' }}>
+                  Forgot your password?
+                </h2>
+                <p className='text-sm mb-5' style={{ color: 'var(--color-text-muted)' }}>
+                  Enter the email address for your account and we'll send you a reset link.
+                </p>
+                <form onSubmit={handleSubmit} className='space-y-4'>
+                  <div>
+                    <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>
+                      Email address
+                    </label>
+                    <input
+                      type='text'
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
+                      className='w-full px-3 py-2.5 text-sm rounded-lg'
+                      placeholder='you@example.com'
+                      autoFocus
+                    />
+                    <FieldError message={emailError} />
+                  </div>
+                  {formError && (
+                    <p className='text-xs' style={{ color: 'var(--color-danger-text)' }}>{formError}</p>
+                  )}
+                  <Button type='submit' loading={loading} className='w-full' size='lg'>
+                    Send Reset Link
+                  </Button>
+                </form>
+                <p className='text-center text-xs mt-4'>
+                  <Link
+                    to='/login'
+                    className='transition-opacity hover:opacity-70'
+                    style={{ color: 'var(--color-accent)' }}
+                  >
+                    Back to Login
+                  </Link>
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </PublicLayout>
   );
 };

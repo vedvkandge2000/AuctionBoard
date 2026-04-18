@@ -1,16 +1,10 @@
 import { formatShort } from '../../utils/formatCurrency';
 
-const getBudgetChipStyle = (pct, colorHex, isMe) => {
-  const bgTint = pct <= 25
-    ? 'rgba(239,68,68,0.08)'
-    : pct <= 60
-      ? 'rgba(234,179,8,0.06)'
-      : undefined;
-  return {
-    borderLeftColor: colorHex,
-    borderLeftWidth: 3,
-    backgroundColor: isMe ? undefined : bgTint, // don't override isMe indigo highlight
-  };
+const getBudgetStyle = (pct, isMe) => {
+  if (isMe) return {};
+  if (pct <= 25) return { backgroundColor: 'var(--color-danger-bg)' };
+  if (pct <= 60) return { backgroundColor: 'var(--color-warning-bg)' };
+  return {};
 };
 
 const TeamBudgetRail = ({ teams = [], auction, myTeamId }) => {
@@ -20,8 +14,19 @@ const TeamBudgetRail = ({ teams = [], auction, myTeamId }) => {
   if (teams.length === 0) return null;
 
   return (
-    <div className='bg-gray-900 rounded-2xl border border-gray-700 p-3'>
-      <h3 className='text-xs text-gray-500 uppercase tracking-wider mb-2 px-1'>Team Budgets</h3>
+    <div
+      className='rounded-2xl p-3'
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
+      <h3
+        className='text-xs uppercase tracking-wider mb-2 px-1'
+        style={{ color: 'var(--color-text-subtle)', fontWeight: 600 }}
+      >
+        Team Budgets
+      </h3>
       <div className='flex flex-wrap gap-2'>
         {teams.map((team) => {
           const pct = Math.round((team.remainingPurse / team.initialPurse) * 100);
@@ -29,21 +34,31 @@ const TeamBudgetRail = ({ teams = [], auction, myTeamId }) => {
           return (
             <div
               key={team._id}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-                isMe
-                  ? 'border-indigo-500 bg-indigo-900/30'
-                  : 'border-gray-700 bg-gray-800'
-              }`}
-              style={getBudgetChipStyle(pct, team.colorHex, isMe)}
+              className='flex items-center gap-2 px-3 py-2 rounded-lg transition-all'
+              style={{
+                borderLeft: `3px solid ${team.colorHex || 'var(--color-accent)'}`,
+                border: isMe
+                  ? `1px solid var(--color-accent)`
+                  : `1px solid var(--color-border)`,
+                borderLeftWidth: 3,
+                borderLeftColor: team.colorHex || 'var(--color-accent)',
+                backgroundColor: isMe
+                  ? 'var(--color-accent-muted)'
+                  : getBudgetStyle(pct, isMe).backgroundColor || 'var(--color-surface-sunken)',
+              }}
             >
               {team.logoUrl && (
                 <img src={team.logoUrl} alt='' className='h-5 w-5 rounded-full object-cover' />
               )}
               <div>
-                <div className='text-xs font-medium text-white'>{team.shortName}</div>
-                <div className='text-xs text-gray-400'>
+                <div className='text-xs font-medium' style={{ color: 'var(--color-text)' }}>
+                  {team.shortName}
+                </div>
+                <div className='text-xs' style={{ color: 'var(--color-text-muted)' }}>
                   {formatShort(team.remainingPurse, symbol, unit)}
-                  <span className='text-gray-600 ml-1'>({pct}%)</span>
+                  <span className='ml-1' style={{ color: 'var(--color-text-subtle)' }}>
+                    ({pct}%)
+                  </span>
                 </div>
               </div>
             </div>

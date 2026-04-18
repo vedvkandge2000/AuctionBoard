@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Gavel, CheckCircle } from 'lucide-react';
 import { resetPassword } from '../services/authService';
 import Button from '../components/ui/Button';
 import FieldError from '../components/ui/FieldError';
@@ -24,7 +25,6 @@ const ResetPasswordPage = () => {
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
-
     setLoading(true);
     setFormError(null);
     try {
@@ -39,70 +39,101 @@ const ResetPasswordPage = () => {
 
   return (
     <PublicLayout>
-    <div className='flex items-center justify-center p-4 py-12'>
-      <div className='w-full max-w-sm animate-fade-in'>
-        <div className='text-center mb-8'>
-          <div className='text-6xl mb-3'>🏏</div>
-          <h1 className='text-2xl font-bold text-white'>AuctionBoard</h1>
-          <p className='text-gray-400 text-sm mt-1'>Set a new password</p>
-        </div>
-
-        <div className='bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl'>
-          {done ? (
-            <div className='text-center'>
-              <div className='text-4xl mb-4'>✅</div>
-              <h2 className='text-white font-semibold mb-2'>Password reset!</h2>
-              <p className='text-gray-400 text-sm mb-6'>Your password has been updated. You can now sign in.</p>
-              <Link to='/login' className='text-indigo-400 hover:text-indigo-300 text-sm underline'>
-                Go to Login
-              </Link>
+      <div className='flex items-center justify-center p-4 py-12'>
+        <div className='w-full max-w-sm animate-fade-in'>
+          <div className='text-center mb-8'>
+            <div
+              className='inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-md'
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Gavel size={30} color='white' />
             </div>
-          ) : (
-            <>
-              <h2 className='text-white font-semibold mb-5'>Choose a new password</h2>
-              <form onSubmit={handleSubmit} className='space-y-4'>
-                <div>
-                  <label className='block text-gray-400 text-sm mb-1.5'>New Password</label>
-                  <input
-                    type='password'
-                    value={form.password}
-                    onChange={(e) => { setForm({ ...form, password: e.target.value }); clearError('password'); }}
-                    className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                    placeholder='Min 8 characters'
-                    autoFocus
-                  />
-                  <FieldError message={errors.password} />
+            <h1 className='text-2xl font-extrabold' style={{ color: 'var(--color-primary)' }}>
+              AuctionBoard
+            </h1>
+            <p className='text-sm mt-1' style={{ color: 'var(--color-text-muted)' }}>
+              Set a new password
+            </p>
+          </div>
+
+          <div
+            className='rounded-2xl p-6'
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            {done ? (
+              <div className='text-center'>
+                <div
+                  className='inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4'
+                  style={{ backgroundColor: 'var(--color-success-bg)' }}
+                >
+                  <CheckCircle size={26} style={{ color: 'var(--color-success-text)' }} />
                 </div>
-                <div>
-                  <label className='block text-gray-400 text-sm mb-1.5'>Confirm Password</label>
-                  <input
-                    type='password'
-                    value={form.confirm}
-                    onChange={(e) => { setForm({ ...form, confirm: e.target.value }); clearError('confirm'); }}
-                    className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                    placeholder='Repeat new password'
-                  />
-                  <FieldError message={errors.confirm} />
-                </div>
-                {formError && (
-                  <div className='text-red-400 text-xs'>
-                    {formError}{' '}
-                    {formError.toLowerCase().includes('expired') && (
-                      <Link to='/forgot-password' className='text-indigo-400 hover:text-indigo-300 underline'>
-                        Request a new link
-                      </Link>
-                    )}
-                  </div>
-                )}
-                <Button type='submit' loading={loading} className='w-full' size='lg'>
-                  Reset Password
-                </Button>
-              </form>
-            </>
-          )}
+                <h2 className='font-semibold mb-2' style={{ color: 'var(--color-text)' }}>
+                  Password reset!
+                </h2>
+                <p className='text-sm mb-6' style={{ color: 'var(--color-text-muted)' }}>
+                  Your password has been updated. You can now sign in.
+                </p>
+                <Link
+                  to='/login'
+                  className='text-sm underline transition-opacity hover:opacity-70'
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  Go to Login
+                </Link>
+              </div>
+            ) : (
+              <>
+                <h2 className='font-semibold mb-5' style={{ color: 'var(--color-text)' }}>
+                  Choose a new password
+                </h2>
+                <form onSubmit={handleSubmit} className='space-y-4'>
+                  {[
+                    { key: 'password', label: 'New Password',      placeholder: 'Min 8 characters',   autoFocus: true },
+                    { key: 'confirm',  label: 'Confirm Password',   placeholder: 'Repeat new password', autoFocus: false },
+                  ].map(({ key, label, placeholder, autoFocus }) => (
+                    <div key={key}>
+                      <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>
+                        {label}
+                      </label>
+                      <input
+                        type='password'
+                        value={form[key]}
+                        onChange={(e) => { setForm({ ...form, [key]: e.target.value }); clearError(key); }}
+                        className='w-full px-3 py-2.5 text-sm rounded-lg'
+                        placeholder={placeholder}
+                        autoFocus={autoFocus}
+                      />
+                      <FieldError message={errors[key]} />
+                    </div>
+                  ))}
+                  {formError && (
+                    <div className='text-xs' style={{ color: 'var(--color-danger-text)' }}>
+                      {formError}{' '}
+                      {formError.toLowerCase().includes('expired') && (
+                        <Link
+                          to='/forgot-password'
+                          className='underline transition-opacity hover:opacity-70'
+                          style={{ color: 'var(--color-accent)' }}
+                        >
+                          Request a new link
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                  <Button type='submit' loading={loading} className='w-full' size='lg'>
+                    Reset Password
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </PublicLayout>
   );
 };

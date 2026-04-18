@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Gavel } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { registerPlayer } from '../services/registrationService';
@@ -51,57 +52,62 @@ const PlayerRegistrationPage = () => {
       <div className='flex items-center justify-center p-4 py-12'>
         <div className='w-full max-w-sm animate-fade-in'>
           <div className='text-center mb-8'>
-            <div className='text-6xl mb-3'>🏆</div>
-            <h1 className='text-2xl font-bold text-white'>AuctionBoard</h1>
-            <p className='text-gray-400 text-sm mt-1'>Player Registration</p>
+            <div
+              className='inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-md'
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Gavel size={30} color='white' />
+            </div>
+            <h1 className='text-2xl font-extrabold' style={{ color: 'var(--color-primary)' }}>AuctionBoard</h1>
+            <p className='text-sm mt-1' style={{ color: 'var(--color-text-muted)' }}>Player Registration</p>
           </div>
 
-          <div className='bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl'>
-            <h2 className='text-white font-semibold mb-1'>Create your player account</h2>
-            <p className='text-gray-500 text-xs mb-5'>
+          <div className='rounded-2xl p-6 shadow-2xl' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <h2 className='font-semibold mb-1' style={{ color: 'var(--color-text)' }}>Create your player account</h2>
+            <p className='text-xs mb-5' style={{ color: 'var(--color-text-subtle)' }}>
               After registering you can discover open auctions and register your playing details for each one.
             </p>
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div>
-                <label className='block text-gray-400 text-sm mb-1.5'>Full Name</label>
+                <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Full Name</label>
                 <input
                   type='text'
                   value={form.name}
                   onChange={(e) => { setForm({ ...form, name: e.target.value }); clearError('name'); }}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  className='w-full rounded-lg px-3 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
                   placeholder='Your full name'
                 />
                 <FieldError message={errors.name} />
               </div>
               <div>
-                <label className='block text-gray-400 text-sm mb-1.5'>Email</label>
+                <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Email</label>
                 <input
                   type='text'
                   value={form.email}
                   onChange={(e) => { setForm({ ...form, email: e.target.value }); clearError('email'); }}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  className='w-full rounded-lg px-3 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
                   placeholder='you@example.com'
                 />
                 <FieldError message={errors.email} />
               </div>
               <div>
-                <label className='block text-gray-400 text-sm mb-1.5'>Password</label>
+                <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Password</label>
                 <input
                   type='password'
                   value={form.password}
                   onChange={(e) => { setForm({ ...form, password: e.target.value }); clearError('password'); }}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  className='w-full rounded-lg px-3 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
                   placeholder='Min 8 characters'
                 />
                 <FieldError message={errors.password} />
               </div>
               <div>
-                <label className='block text-gray-400 text-sm mb-1.5'>Confirm Password</label>
+                <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Confirm Password</label>
                 <input
                   type='password'
                   value={form.confirm}
                   onChange={(e) => { setForm({ ...form, confirm: e.target.value }); clearError('confirm'); }}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  className='w-full rounded-lg px-3 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
                   placeholder='Repeat password'
                 />
                 <FieldError message={errors.confirm} />
@@ -111,13 +117,13 @@ const PlayerRegistrationPage = () => {
               </Button>
             </form>
 
-            <p className='text-center text-gray-500 text-xs mt-4'>
+            <p className='text-center text-xs mt-4' style={{ color: 'var(--color-text-subtle)' }}>
               Team owner?{' '}
-              <Link to='/register' className='text-indigo-400 hover:text-indigo-300'>Team owner registration</Link>
+              <Link to='/register' style={{ color: 'var(--color-accent)' }} className='hover:opacity-80'>Team owner registration</Link>
             </p>
-            <p className='text-center text-gray-500 text-xs mt-2'>
+            <p className='text-center text-xs mt-2' style={{ color: 'var(--color-text-subtle)' }}>
               Already have an account?{' '}
-              <Link to='/login' className='text-indigo-400 hover:text-indigo-300'>Sign in</Link>
+              <Link to='/login' style={{ color: 'var(--color-accent)' }} className='hover:opacity-80'>Sign in</Link>
             </p>
           </div>
         </div>

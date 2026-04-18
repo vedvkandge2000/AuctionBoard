@@ -36,26 +36,26 @@ const TeamForm = ({ auction, team, onSave, onClose, isAdmin }) => {
     }
   };
 
-  const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  const inputCls = 'w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]';
 
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
       <div className='grid grid-cols-2 gap-4'>
         <div>
-          <label className='block text-gray-400 text-sm mb-1.5'>Team Name *</label>
+          <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Team Name *</label>
           <input required className={inputCls} value={form.name} onChange={(e) => handle('name', e.target.value)} placeholder='e.g. Mumbai Indians' />
         </div>
         <div>
-          <label className='block text-gray-400 text-sm mb-1.5'>Short Name (max 5) *</label>
+          <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Short Name (max 5) *</label>
           <input required maxLength={5} className={inputCls} value={form.shortName} onChange={(e) => handle('shortName', e.target.value)} placeholder='e.g. MI' />
         </div>
         <div>
-          <label className='block text-gray-400 text-sm mb-1.5'>Team Color</label>
-          <input type='color' className='h-10 w-full rounded-lg border border-gray-700 bg-gray-800 cursor-pointer' value={form.colorHex} onChange={(e) => handle('colorHex', e.target.value)} />
+          <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Team Color</label>
+          <input type='color' className='h-10 w-full rounded-lg cursor-pointer' style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }} value={form.colorHex} onChange={(e) => handle('colorHex', e.target.value)} />
         </div>
         {isAdmin && (
           <div>
-            <label className='block text-gray-400 text-sm mb-1.5'>Assign Owner</label>
+            <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>Assign Owner</label>
             <select
               className={inputCls}
               value={form.ownerId}
@@ -69,7 +69,7 @@ const TeamForm = ({ auction, team, onSave, onClose, isAdmin }) => {
               ))}
             </select>
             {approvedOwners.length === 0 && (
-              <p className='text-gray-500 text-xs mt-1'>No approved team owners yet. Approve owners from the Approvals page.</p>
+              <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>No approved team owners yet. Approve owners from the Approvals page.</p>
             )}
           </div>
         )}
@@ -99,27 +99,27 @@ const SquadModal = ({ open, onClose, auctionId, team, auction }) => {
       ) : (
         <div>
           <div className='grid grid-cols-3 gap-3 mb-4 text-center'>
-            <div className='bg-gray-800 rounded-lg p-3'>
-              <div className='text-gray-400 text-xs'>Remaining Purse</div>
-              <div className='text-indigo-400 font-bold'>{formatCurrency(squadTeam?.remainingPurse, symbol, unit)}</div>
+            <div className='rounded-lg p-3' style={{ backgroundColor: 'var(--color-surface)' }}>
+              <div className='text-xs' style={{ color: 'var(--color-text-muted)' }}>Remaining Purse</div>
+              <div className='font-bold' style={{ color: 'var(--color-accent)' }}>{formatCurrency(squadTeam?.remainingPurse, symbol, unit)}</div>
             </div>
-            <div className='bg-gray-800 rounded-lg p-3'>
-              <div className='text-gray-400 text-xs'>Players</div>
-              <div className='text-white font-bold'>{squadTeam?.players?.length || 0}</div>
+            <div className='rounded-lg p-3' style={{ backgroundColor: 'var(--color-surface)' }}>
+              <div className='text-xs' style={{ color: 'var(--color-text-muted)' }}>Players</div>
+              <div className='font-bold' style={{ color: 'var(--color-text)' }}>{squadTeam?.players?.length || 0}</div>
             </div>
-            <div className='bg-gray-800 rounded-lg p-3'>
-              <div className='text-gray-400 text-xs'>RTM Cards</div>
-              <div className='text-white font-bold'>{squadTeam?.rtmCardsRemaining || 0}</div>
+            <div className='rounded-lg p-3' style={{ backgroundColor: 'var(--color-surface)' }}>
+              <div className='text-xs' style={{ color: 'var(--color-text-muted)' }}>RTM Cards</div>
+              <div className='font-bold' style={{ color: 'var(--color-text)' }}>{squadTeam?.rtmCardsRemaining || 0}</div>
             </div>
           </div>
           <div className='space-y-2 max-h-80 overflow-y-auto'>
             {(squadTeam?.players || []).map((sp) => (
-              <div key={sp.playerId?._id} className='flex items-center justify-between bg-gray-800 rounded-lg px-4 py-2.5'>
+              <div key={sp.playerId?._id} className='flex items-center justify-between rounded-lg px-4 py-2.5' style={{ backgroundColor: 'var(--color-surface)' }}>
                 <div>
-                  <p className='text-white text-sm font-medium'>{sp.playerId?.name}</p>
-                  <p className='text-gray-400 text-xs'>{sp.playerId?.role} {sp.acquiredViaRtm ? '· RTM' : ''}</p>
+                  <p className='text-sm font-medium' style={{ color: 'var(--color-text)' }}>{sp.playerId?.name}</p>
+                  <p className='text-xs' style={{ color: 'var(--color-text-muted)' }}>{sp.playerId?.role} {sp.acquiredViaRtm ? '· RTM' : ''}</p>
                 </div>
-                <span className='text-indigo-400 font-semibold text-sm'>{formatCurrency(sp.pricePaid, symbol, unit)}</span>
+                <span className='font-semibold text-sm' style={{ color: 'var(--color-accent)' }}>{formatCurrency(sp.pricePaid, symbol, unit)}</span>
               </div>
             ))}
           </div>
@@ -177,8 +177,8 @@ const TeamsPage = () => {
     <div className='animate-fade-in'>
       <div className='flex items-center justify-between mb-5'>
         <div>
-          <h1 className='text-2xl font-bold text-white'>Teams</h1>
-          <p className='text-gray-400 text-sm'>{teams.length} teams</p>
+          <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>Teams</h1>
+          <p className='text-sm' style={{ color: 'var(--color-text-muted)' }}>{teams.length} teams</p>
         </div>
         {isAdmin && <Button onClick={() => setShowForm(true)}>+ Add Team</Button>}
         {isTeamOwner && !teams.some((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id) && (
@@ -199,31 +199,31 @@ const TeamsPage = () => {
           {teams.map((team) => {
             const pct = Math.round((team.remainingPurse / team.initialPurse) * 100);
             return (
-              <div key={team._id} className='bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-colors' style={{ borderTopColor: team.colorHex, borderTopWidth: 3, borderLeftColor: getBudgetBorderColor(pct), borderLeftWidth: 3 }}>
+              <div key={team._id} className='rounded-2xl p-5 transition-colors' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderTopColor: team.colorHex, borderTopWidth: 3, borderLeftColor: getBudgetBorderColor(pct), borderLeftWidth: 3 }}>
                 <div className='flex items-center gap-3 mb-3'>
                   {team.logoUrl && <img src={team.logoUrl} alt='' className='h-8 w-8 rounded-full object-cover' />}
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center gap-2'>
-                      <h2 className='text-white font-semibold truncate'>{team.name}</h2>
+                      <h2 className='font-semibold truncate' style={{ color: 'var(--color-text)' }}>{team.name}</h2>
                       {isTeamOwner && (team.ownerId?._id === user?.id || team.ownerId === user?.id) && (
-                        <span className='text-xs bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full flex-shrink-0'>My Team</span>
+                        <span className='text-xs px-2 py-0.5 rounded-full flex-shrink-0' style={{ backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>My Team</span>
                       )}
                     </div>
-                    <p className='text-gray-500 text-xs'>{team.shortName}</p>
+                    <p className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>{team.shortName}</p>
                   </div>
                 </div>
                 <div className='space-y-1 text-sm mb-4'>
                   <div className='flex justify-between'>
-                    <span className='text-gray-400'>Purse</span>
-                    <span className='text-indigo-400 font-medium'>{formatShort(team.remainingPurse, symbol, unit)} <span className='text-gray-600'>({pct}%)</span></span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>Purse</span>
+                    <span className='font-medium' style={{ color: 'var(--color-accent)' }}>{formatShort(team.remainingPurse, symbol, unit)} <span style={{ color: 'var(--color-text-subtle)' }}>({pct}%)</span></span>
                   </div>
                   <div className='flex justify-between'>
-                    <span className='text-gray-400'>Players</span>
-                    <span className='text-white'>{team.players?.length || 0}</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>Players</span>
+                    <span style={{ color: 'var(--color-text)' }}>{team.players?.length || 0}</span>
                   </div>
                 </div>
                 {/* Purse bar */}
-                <div className='h-1.5 bg-gray-700 rounded-full mb-4'>
+                <div className='h-1.5 rounded-full mb-4' style={{ backgroundColor: 'var(--color-border)' }}>
                   <div className='h-1.5 rounded-full transition-all' style={{ width: `${pct}%`, backgroundColor: team.colorHex }} />
                 </div>
                 <div className='flex gap-2 flex-wrap'>

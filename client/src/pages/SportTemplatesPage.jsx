@@ -12,13 +12,13 @@ import Spinner from '../components/ui/Spinner';
 import EmptyState from '../components/ui/EmptyState';
 import Badge from '../components/ui/Badge';
 
-const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+const inputCls = 'w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]';
 
 const Field = ({ label, hint, children }) => (
   <div>
-    <label className='block text-gray-400 text-sm mb-1.5'>{label}</label>
+    <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>{label}</label>
     {children}
-    {hint && <p className='text-gray-600 text-xs mt-1'>{hint}</p>}
+    {hint && <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>{hint}</p>}
   </div>
 );
 
@@ -32,7 +32,7 @@ const BidTierBuilder = ({ tiers, onChange }) => {
       {tiers.map((tier, i) => (
         <div key={i} className='flex gap-2 items-center'>
           <div className='flex-1'>
-            <label className='text-gray-500 text-xs'>Up to amount</label>
+            <label className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>Up to amount</label>
             <input
               type='number'
               className={inputCls}
@@ -42,11 +42,11 @@ const BidTierBuilder = ({ tiers, onChange }) => {
             />
           </div>
           <div className='flex-1'>
-            <label className='text-gray-500 text-xs'>Increment</label>
+            <label className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>Increment</label>
             <input type='number' className={inputCls} value={tier.increment} onChange={(e) => update(i, 'increment', e.target.value)} />
           </div>
           {tiers.length > 1 && (
-            <button onClick={() => remove(i)} className='text-red-400 hover:text-red-300 mt-4 px-2'>×</button>
+            <button onClick={() => remove(i)} className='mt-4 px-2' style={{ color: 'var(--color-danger-text)' }}>×</button>
           )}
         </div>
       ))}
@@ -84,7 +84,7 @@ const CategoryBuilder = ({ categories, basePrices, onChange }) => {
   return (
     <div className='space-y-2'>
       {categories.length > 0 && (
-        <div className='grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-500 px-1 mb-1'>
+        <div className='grid grid-cols-[1fr_1fr_auto] gap-2 text-xs px-1 mb-1' style={{ color: 'var(--color-text-subtle)' }}>
           <span>Category Name</span>
           <span>Base Price</span>
           <span />
@@ -108,11 +108,11 @@ const CategoryBuilder = ({ categories, basePrices, onChange }) => {
             placeholder='Base price'
             onChange={(e) => updatePrice(cat, e.target.value)}
           />
-          <button onClick={() => remove(i)} className='text-red-400 hover:text-red-300 px-2 text-lg leading-none'>×</button>
+          <button onClick={() => remove(i)} className='px-2 text-lg leading-none' style={{ color: 'var(--color-danger-text)' }}>×</button>
         </div>
       ))}
       <Button size='sm' variant='ghost' type='button' onClick={add}>+ Add Category</Button>
-      <p className='text-gray-600 text-xs mt-1'>
+      <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>
         Row order = auction sequence. Base price is auto-applied when a player with that category is approved.
       </p>
     </div>
@@ -194,8 +194,8 @@ const TemplateForm = ({ initial, onSave, onClose }) => {
       </Field>
 
       {/* Players */}
-      <div className='border-t border-gray-800 pt-4'>
-        <p className='text-gray-500 text-xs uppercase tracking-widest mb-3'>Players &amp; Squad</p>
+      <div className='pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
+        <p className='text-xs uppercase tracking-widest mb-3' style={{ color: 'var(--color-text-subtle)' }}>Players &amp; Squad</p>
         <Field label='Player Roles (comma-separated)' hint='e.g. Batsman, Bowler, All-Rounder'>
           <input className={inputCls} value={form.playerRoles} onChange={(e) => handle('playerRoles', e.target.value)} />
         </Field>
@@ -219,8 +219,8 @@ const TemplateForm = ({ initial, onSave, onClose }) => {
       </div>
 
       {/* Currency */}
-      <div className='border-t border-gray-800 pt-4'>
-        <p className='text-gray-500 text-xs uppercase tracking-widest mb-3'>Currency &amp; Purse</p>
+      <div className='pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
+        <p className='text-xs uppercase tracking-widest mb-3' style={{ color: 'var(--color-text-subtle)' }}>Currency &amp; Purse</p>
         <div className='grid grid-cols-3 gap-3'>
           <Field label='Code'><input className={inputCls} value={form.currency} onChange={(e) => handle('currency', e.target.value)} /></Field>
           <Field label='Symbol'><input className={inputCls} value={form.currencySymbol} onChange={(e) => handle('currencySymbol', e.target.value)} /></Field>
@@ -234,14 +234,14 @@ const TemplateForm = ({ initial, onSave, onClose }) => {
       </div>
 
       {/* Bid increments */}
-      <div className='border-t border-gray-800 pt-4'>
-        <p className='text-gray-500 text-xs uppercase tracking-widest mb-3'>Bid Increment Tiers</p>
+      <div className='pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
+        <p className='text-xs uppercase tracking-widest mb-3' style={{ color: 'var(--color-text-subtle)' }}>Bid Increment Tiers</p>
         <BidTierBuilder tiers={form.bidIncrementTiers} onChange={(tiers) => handle('bidIncrementTiers', tiers)} />
       </div>
 
       {/* Player Categories */}
-      <div className='border-t border-gray-800 pt-4'>
-        <p className='text-gray-500 text-xs uppercase tracking-widest mb-3'>Player Categories</p>
+      <div className='pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
+        <p className='text-xs uppercase tracking-widest mb-3' style={{ color: 'var(--color-text-subtle)' }}>Player Categories</p>
         <CategoryBuilder
           categories={form.playerCategories}
           basePrices={form.categoryBasePrices}
@@ -250,10 +250,10 @@ const TemplateForm = ({ initial, onSave, onClose }) => {
       </div>
 
       {/* RTM */}
-      <div className='border-t border-gray-800 pt-4'>
+      <div className='pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
         <div className='flex items-center gap-3 mb-3'>
           <input type='checkbox' id='rtm' checked={form.rtmEnabled} onChange={(e) => handle('rtmEnabled', e.target.checked)} className='h-4 w-4 rounded' />
-          <label htmlFor='rtm' className='text-gray-300 text-sm'>Enable RTM cards by default</label>
+          <label htmlFor='rtm' className='text-sm' style={{ color: 'var(--color-text-muted)' }}>Enable RTM cards by default</label>
         </div>
         {form.rtmEnabled && (
           <Field label='RTM Cards per Team'>
@@ -262,7 +262,7 @@ const TemplateForm = ({ initial, onSave, onClose }) => {
         )}
       </div>
 
-      <div className='flex gap-3 justify-end border-t border-gray-800 pt-4'>
+      <div className='flex gap-3 justify-end pt-4' style={{ borderTop: '1px solid var(--color-border)' }}>
         <Button variant='ghost' onClick={onClose} type='button'>Cancel</Button>
         <Button type='submit' loading={loading}>{initial ? 'Save Changes' : 'Create Template'}</Button>
       </div>
@@ -315,8 +315,8 @@ const SportTemplatesPage = () => {
     <div className='animate-fade-in max-w-3xl'>
       <div className='flex items-center justify-between mb-6'>
         <div>
-          <h1 className='text-2xl font-bold text-white'>Sport Templates</h1>
-          <p className='text-gray-400 text-sm mt-0.5'>Define default configs for each sport. Applied when a new auction is created.</p>
+          <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>Sport Templates</h1>
+          <p className='text-sm mt-0.5' style={{ color: 'var(--color-text-muted)' }}>Define default configs for each sport. Applied when a new auction is created.</p>
         </div>
         <Button onClick={() => { setEditing(null); setShowForm(true); }}>+ New Template</Button>
       </div>
@@ -326,16 +326,16 @@ const SportTemplatesPage = () => {
       ) : (
         <div className='space-y-3'>
           {templates.map((t) => (
-            <div key={t._id} className='bg-gray-900 border border-gray-800 rounded-2xl p-5'>
+            <div key={t._id} className='rounded-2xl p-5' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
               <div className='flex items-start justify-between mb-3'>
                 <div className='flex items-center gap-3'>
                   <span className='text-3xl'>{t.icon}</span>
                   <div>
                     <div className='flex items-center gap-2'>
-                      <h2 className='text-white font-semibold'>{t.name}</h2>
+                      <h2 className='font-semibold' style={{ color: 'var(--color-text)' }}>{t.name}</h2>
                       {t.isSeeded && <Badge variant='indigo'>Built-in</Badge>}
                     </div>
-                    <p className='text-gray-500 text-xs mt-0.5'>{t.description}</p>
+                    <p className='text-xs mt-0.5' style={{ color: 'var(--color-text-subtle)' }}>{t.description}</p>
                   </div>
                 </div>
                 <div className='flex gap-2'>
@@ -349,50 +349,50 @@ const SportTemplatesPage = () => {
 
               {/* Config summary */}
               <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs'>
-                <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                  <p className='text-gray-500 mb-0.5'>Purse</p>
-                  <p className='text-white font-medium'>{t.currencySymbol}{t.defaultPursePerTeam} {t.currencyUnit}</p>
+                <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                  <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Purse</p>
+                  <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.currencySymbol}{t.defaultPursePerTeam} {t.currencyUnit}</p>
                 </div>
-                <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                  <p className='text-gray-500 mb-0.5'>Squad</p>
-                  <p className='text-white font-medium'>{t.minSquadSize}–{t.maxSquadSize}</p>
+                <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                  <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Squad</p>
+                  <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.minSquadSize}–{t.maxSquadSize}</p>
                 </div>
-                <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                  <p className='text-gray-500 mb-0.5'>Roles</p>
-                  <p className='text-white font-medium truncate'>{(t.playerRoles || []).join(', ') || '—'}</p>
+                <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                  <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Roles</p>
+                  <p className='font-medium truncate' style={{ color: 'var(--color-text)' }}>{(t.playerRoles || []).join(', ') || '—'}</p>
                 </div>
                 {t.playerCategories?.length > 0 && (
-                  <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                    <p className='text-gray-500 mb-0.5'>Categories</p>
-                    <p className='text-white font-medium truncate'>{t.playerCategories.join(', ')}</p>
+                  <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                    <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Categories</p>
+                    <p className='font-medium truncate' style={{ color: 'var(--color-text)' }}>{t.playerCategories.join(', ')}</p>
                   </div>
                 )}
-                <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                  <p className='text-gray-500 mb-0.5'>Bid tiers</p>
-                  <p className='text-white font-medium'>{t.bidIncrementTiers?.length} tier{t.bidIncrementTiers?.length !== 1 ? 's' : ''}</p>
+                <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                  <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Bid tiers</p>
+                  <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.bidIncrementTiers?.length} tier{t.bidIncrementTiers?.length !== 1 ? 's' : ''}</p>
                 </div>
                 {t.maxOverseasPlayers > 0 && (
-                  <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                    <p className='text-gray-500 mb-0.5'>Overseas cap</p>
-                    <p className='text-white font-medium'>{t.maxOverseasPlayers}</p>
+                  <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                    <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Overseas cap</p>
+                    <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.maxOverseasPlayers}</p>
                   </div>
                 )}
                 {t.minMalePlayers > 0 && (
-                  <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                    <p className='text-gray-500 mb-0.5'>Min male</p>
-                    <p className='text-white font-medium'>{t.minMalePlayers}</p>
+                  <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                    <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Min male</p>
+                    <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.minMalePlayers}</p>
                   </div>
                 )}
                 {t.minFemalePlayers > 0 && (
-                  <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                    <p className='text-gray-500 mb-0.5'>Min female</p>
-                    <p className='text-white font-medium'>{t.minFemalePlayers}</p>
+                  <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                    <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>Min female</p>
+                    <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.minFemalePlayers}</p>
                   </div>
                 )}
                 {t.rtmEnabled && (
-                  <div className='bg-gray-800 rounded-lg px-3 py-2'>
-                    <p className='text-gray-500 mb-0.5'>RTM cards</p>
-                    <p className='text-white font-medium'>{t.rtmCardsPerTeam}</p>
+                  <div className='rounded-lg px-3 py-2' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
+                    <p className='mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>RTM cards</p>
+                    <p className='font-medium' style={{ color: 'var(--color-text)' }}>{t.rtmCardsPerTeam}</p>
                   </div>
                 )}
               </div>

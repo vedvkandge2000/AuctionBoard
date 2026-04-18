@@ -51,44 +51,74 @@ const OfflineBidPanel = ({ auction, teams }) => {
   };
 
   return (
-    <div className='bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4'>
+    <div
+      className='rounded-2xl p-5 space-y-4'
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
       <div className='flex items-center justify-between'>
-        <h3 className='text-white font-semibold text-sm'>Offline Bid Control</h3>
-        <span className='text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium'>
+        <h3 className='font-semibold text-sm' style={{ color: 'var(--color-text)' }}>
+          Offline Bid Control
+        </h3>
+        <span
+          className='text-xs px-2 py-0.5 rounded-full font-medium'
+          style={{
+            backgroundColor: 'var(--color-warning-bg)',
+            color: 'var(--color-warning-text)',
+          }}
+        >
           Offline Mode
         </span>
       </div>
 
       {!hasPlayer ? (
-        <p className='text-gray-500 text-sm text-center py-2'>No player on the block</p>
+        <p className='text-sm text-center py-2' style={{ color: 'var(--color-text-subtle)' }}>
+          No player on the block
+        </p>
       ) : (
         <>
           {/* Current bid */}
-          <div className='bg-gray-800/60 rounded-xl px-4 py-3'>
-            <p className='text-gray-500 text-xs mb-0.5'>Current bid</p>
+          <div
+            className='rounded-xl px-4 py-3'
+            style={{ backgroundColor: 'var(--color-surface-sunken)' }}
+          >
+            <p className='text-xs mb-0.5' style={{ color: 'var(--color-text-subtle)' }}>
+              Current bid
+            </p>
             {auction.currentBid > 0 ? (
               <>
-                <p className='text-white font-bold text-xl'>
+                <p className='font-bold text-xl' style={{ color: 'var(--color-text)' }}>
                   {formatCurrency(auction.currentBid, sym, unit)}
                 </p>
                 {currentBidTeam && (
-                  <p className='text-gray-400 text-xs mt-0.5'>by {currentBidTeam.name}</p>
+                  <p className='text-xs mt-0.5' style={{ color: 'var(--color-text-muted)' }}>
+                    by {currentBidTeam.name}
+                  </p>
                 )}
               </>
             ) : (
-              <p className='text-gray-400 text-sm'>
+              <p className='text-sm' style={{ color: 'var(--color-text-muted)' }}>
                 Base price — {basePrice > 0 ? formatCurrency(basePrice, sym, unit) : '—'}
               </p>
             )}
           </div>
 
-          {/* Team selector + increment button */}
+          {/* Team selector + bid button */}
           <div>
-            <label className='block text-gray-400 text-xs mb-1.5'>Bidding Team</label>
+            <label className='block text-xs mb-1.5' style={{ color: 'var(--color-text-muted)' }}>
+              Bidding Team
+            </label>
             <select
               value={selectedTeamId}
               onChange={(e) => setSelectedTeamId(e.target.value)}
-              className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3'
+              className='w-full rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none'
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text)',
+              }}
             >
               <option value=''>Select team...</option>
               {teams.map((team) => (
@@ -102,7 +132,11 @@ const OfflineBidPanel = ({ auction, teams }) => {
               disabled={!canBid}
               loading={loading}
               onClick={handleBid}
-              className='w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-semibold'
+              className='w-full font-semibold'
+              style={{
+                backgroundColor: 'var(--color-warning)',
+                color: '#1a1a1a',
+              }}
             >
               Bid {formatCurrency(nextBid, sym, unit)}
             </Button>
@@ -111,7 +145,11 @@ const OfflineBidPanel = ({ auction, teams }) => {
               <button
                 disabled={!canBid}
                 onClick={handleSellAtBase}
-                className='w-full mt-2 text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 rounded-lg py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                className='w-full mt-2 text-xs px-3 py-2 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                style={{
+                  color: 'var(--color-success-text)',
+                  borderColor: 'var(--color-success)',
+                }}
               >
                 Sell at base price — {formatCurrency(basePrice, sym, unit)}
               </button>

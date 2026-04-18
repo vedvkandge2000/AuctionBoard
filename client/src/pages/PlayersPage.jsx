@@ -14,11 +14,11 @@ import { formatCurrency } from '../utils/formatCurrency';
 
 const STATUS_BADGE = { pool: 'default', live: 'green', sold: 'blue', unsold: 'red' };
 
-const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+const inputCls = 'w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]';
 
 const Field = ({ label, children }) => (
   <div>
-    <label className='block text-gray-400 text-sm mb-1.5'>{label}</label>
+    <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>{label}</label>
     {children}
   </div>
 );
@@ -146,13 +146,13 @@ const PlayersPage = () => {
     <div className='animate-fade-in'>
       <div className='flex flex-wrap items-center gap-3 mb-5'>
         <div className='flex-1'>
-          <h1 className='text-2xl font-bold text-white'>Players</h1>
-          <p className='text-gray-400 text-sm'>{players.length} players</p>
+          <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>Players</h1>
+          <p className='text-sm' style={{ color: 'var(--color-text-muted)' }}>{players.length} players</p>
         </div>
         {isAdmin && (
           <div className='flex gap-2 flex-wrap'>
             <Button size='sm' variant='ghost' onClick={() => downloadTemplate(auctionId)}>⬇️ CSV Template</Button>
-            <label className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-white/20 text-gray-300 hover:text-white hover:bg-white/10 cursor-pointer ${csvLoading ? 'opacity-50 cursor-wait' : ''}`}>
+            <label className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-white/20 hover:bg-white/10 cursor-pointer ${csvLoading ? 'opacity-50 cursor-wait' : ''}`} style={{ color: 'var(--color-text-muted)' }}>
               {csvLoading ? '⏳' : '📤'} Import CSV
               <input type='file' accept='.csv' className='hidden' onChange={handleCSV} />
             </label>
@@ -166,7 +166,8 @@ const PlayersPage = () => {
         <select
           value={filter.status}
           onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-          className='bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+          className='rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
         >
           <option value=''>All Status</option>
           <option value='pool'>Pool</option>
@@ -177,7 +178,8 @@ const PlayersPage = () => {
         <select
           value={filter.role}
           onChange={(e) => setFilter({ ...filter, role: e.target.value })}
-          className='bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+          className='rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
         >
           <option value=''>All Roles</option>
           {(auction?.playerRoles || []).map((r) => <option key={r}>{r}</option>)}
@@ -189,11 +191,11 @@ const PlayersPage = () => {
       ) : (
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
           {players.map((player) => (
-            <div key={player._id} className='bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors'>
+            <div key={player._id} className='rounded-xl p-4 transition-colors' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
               <div className='flex items-start justify-between mb-2'>
                 <div>
-                  <p className='text-white font-semibold text-sm'>{player.name}</p>
-                  <p className='text-gray-400 text-xs'>
+                  <p className='font-semibold text-sm' style={{ color: 'var(--color-text)' }}>{player.name}</p>
+                  <p className='text-xs' style={{ color: 'var(--color-text-muted)' }}>
                     {player.role}
                     {player.gender ? ` · ${player.gender}` : ` · ${player.nationality}`}
                   </p>
@@ -207,7 +209,7 @@ const PlayersPage = () => {
                   )}
                 </div>
               </div>
-              <p className='text-indigo-400 text-sm font-medium mb-3'>
+              <p className='text-sm font-medium mb-3' style={{ color: 'var(--color-accent)' }}>
                 {player.status === 'sold' ? `Sold: ${formatCurrency(player.finalPrice, symbol, unit)}` : `Base: ${formatCurrency(player.basePrice, symbol, unit)}`}
               </p>
               {isAdmin && player.status === 'pool' && (

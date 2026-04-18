@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Gavel } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { registerTeamOwner } from '../services/registrationService';
@@ -31,12 +32,7 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      const data = await registerTeamOwner({
-        name: form.name,
-        email: form.email,
-        password: form.password,
-      });
-      // Registration returns a JWT — store session and go straight to dashboard
+      const data = await registerTeamOwner({ name: form.name, email: form.email, password: form.password });
       setSession(data.token, data.user);
       navigate('/', { replace: true });
     } catch (err) {
@@ -46,81 +42,85 @@ const RegisterPage = () => {
     }
   };
 
+  const fields = [
+    { key: 'name',     label: 'Full Name',       type: 'text',     autoComplete: 'name',             placeholder: 'Your name' },
+    { key: 'email',    label: 'Email',            type: 'text',     autoComplete: 'email',            placeholder: 'you@example.com' },
+    { key: 'password', label: 'Password',         type: 'password', autoComplete: 'new-password',     placeholder: 'Min 8 characters' },
+    { key: 'confirm',  label: 'Confirm Password', type: 'password', autoComplete: 'new-password',     placeholder: 'Repeat password' },
+  ];
+
   return (
     <PublicLayout>
-    <div className='flex items-center justify-center p-4 py-12'>
-      <div className='w-full max-w-sm animate-fade-in'>
-        <div className='text-center mb-8'>
-          <div className='text-6xl mb-3'>🏏</div>
-          <h1 className='text-2xl font-bold text-white'>AuctionBoard</h1>
-          <p className='text-gray-400 text-sm mt-1'>Register as Team Owner</p>
-        </div>
+      <div className='flex items-center justify-center p-4 py-12'>
+        <div className='w-full max-w-sm animate-fade-in'>
+          <div className='text-center mb-8'>
+            <div
+              className='inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-md'
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Gavel size={30} color='white' />
+            </div>
+            <h1 className='text-2xl font-extrabold' style={{ color: 'var(--color-primary)' }}>
+              AuctionBoard
+            </h1>
+            <p className='text-sm mt-1' style={{ color: 'var(--color-text-muted)' }}>
+              Register as Team Owner
+            </p>
+          </div>
 
-        <div className='bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl'>
-          <h2 className='text-white font-semibold mb-1'>Create your account</h2>
-          <p className='text-gray-500 text-xs mb-5'>After registering you can browse and apply to join any open auction.</p>
-          <form onSubmit={handleSubmit} className='space-y-4'>
+          <div
+            className='rounded-2xl p-6'
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <h2 className='font-semibold mb-1' style={{ color: 'var(--color-text)' }}>
+              Create your account
+            </h2>
+            <p className='text-xs mb-5' style={{ color: 'var(--color-text-subtle)' }}>
+              After registering you can browse and apply to join any open auction.
+            </p>
+            <form onSubmit={handleSubmit} className='space-y-4'>
+              {fields.map(({ key, label, type, autoComplete, placeholder }) => (
+                <div key={key}>
+                  <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    autoComplete={autoComplete}
+                    value={form[key]}
+                    onChange={(e) => { setForm({ ...form, [key]: e.target.value }); clearError(key); }}
+                    className='w-full px-3 py-2.5 text-sm rounded-lg'
+                    placeholder={placeholder}
+                  />
+                  <FieldError message={errors[key]} />
+                </div>
+              ))}
+              <Button type='submit' loading={loading} className='w-full' size='lg'>
+                Create Account
+              </Button>
+            </form>
 
-            <div>
-              <label className='block text-gray-400 text-sm mb-1.5'>Full Name</label>
-              <input
-                type='text'
-                value={form.name}
-                onChange={(e) => { setForm({ ...form, name: e.target.value }); clearError('name'); }}
-                className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                placeholder='Your name'
-              />
-              <FieldError message={errors.name} />
+            <div className='mt-4 space-y-2'>
+              <p className='text-center text-xs' style={{ color: 'var(--color-text-subtle)' }}>
+                Already have an account?{' '}
+                <Link to='/login' className='transition-opacity hover:opacity-70' style={{ color: 'var(--color-accent)' }}>
+                  Sign in
+                </Link>
+              </p>
+              <p className='text-center text-xs' style={{ color: 'var(--color-text-subtle)' }}>
+                Registering as a player?{' '}
+                <Link to='/register/player' className='transition-opacity hover:opacity-70' style={{ color: 'var(--color-accent)' }}>
+                  Player registration
+                </Link>
+              </p>
             </div>
-            <div>
-              <label className='block text-gray-400 text-sm mb-1.5'>Email</label>
-              <input
-                type='text'
-                value={form.email}
-                onChange={(e) => { setForm({ ...form, email: e.target.value }); clearError('email'); }}
-                className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                placeholder='you@example.com'
-              />
-              <FieldError message={errors.email} />
-            </div>
-            <div>
-              <label className='block text-gray-400 text-sm mb-1.5'>Password</label>
-              <input
-                type='password'
-                value={form.password}
-                onChange={(e) => { setForm({ ...form, password: e.target.value }); clearError('password'); }}
-                className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                placeholder='Min 8 characters'
-              />
-              <FieldError message={errors.password} />
-            </div>
-            <div>
-              <label className='block text-gray-400 text-sm mb-1.5'>Confirm Password</label>
-              <input
-                type='password'
-                value={form.confirm}
-                onChange={(e) => { setForm({ ...form, confirm: e.target.value }); clearError('confirm'); }}
-                className='w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                placeholder='Repeat password'
-              />
-              <FieldError message={errors.confirm} />
-            </div>
-            <Button type='submit' loading={loading} className='w-full' size='lg'>
-              Create Account
-            </Button>
-          </form>
-
-          <p className='text-center text-gray-500 text-xs mt-4'>
-            Already have an account?{' '}
-            <Link to='/login' className='text-indigo-400 hover:text-indigo-300'>Sign in</Link>
-          </p>
-          <p className='text-center text-gray-500 text-xs mt-2'>
-            Registering as a player?{' '}
-            <Link to='/register/player' className='text-indigo-400 hover:text-indigo-300'>Player registration</Link>
-          </p>
+          </div>
         </div>
       </div>
-    </div>
     </PublicLayout>
   );
 };

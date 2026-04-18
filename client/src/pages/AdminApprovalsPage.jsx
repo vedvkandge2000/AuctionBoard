@@ -49,8 +49,12 @@ const MembershipApprovalsTab = () => {
             key={s}
             onClick={() => setFilter(s)}
             className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-              filter === s ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              filter === s ? 'text-white' : 'hover:text-white'
             }`}
+            style={filter === s
+              ? { backgroundColor: 'var(--color-accent)' }
+              : { backgroundColor: 'var(--color-surface)', color: 'var(--color-text-muted)' }
+            }
           >
             {s}
           </button>
@@ -64,21 +68,21 @@ const MembershipApprovalsTab = () => {
       ) : (
         <div className='space-y-3'>
           {memberships.map((m) => (
-            <div key={m._id} className='bg-gray-800 rounded-xl p-4 flex items-center justify-between gap-4'>
+            <div key={m._id} className='rounded-xl p-4 flex items-center justify-between gap-4' style={{ backgroundColor: 'var(--color-surface)' }}>
               <div className='min-w-0'>
-                <p className='text-white font-medium truncate'>{m.userId?.name}</p>
-                <p className='text-gray-400 text-sm truncate'>{m.userId?.email}</p>
+                <p className='font-medium truncate' style={{ color: 'var(--color-text)' }}>{m.userId?.name}</p>
+                <p className='text-sm truncate' style={{ color: 'var(--color-text-muted)' }}>{m.userId?.email}</p>
                 {m.auctionId && (
-                  <p className='text-indigo-400 text-xs mt-0.5 truncate'>
+                  <p className='text-xs mt-0.5 truncate' style={{ color: 'var(--color-accent)' }}>
                     Auction: {m.auctionId.name}
                     {m.auctionId.sport && ` · ${m.auctionId.sport}`}
                   </p>
                 )}
-                <p className='text-gray-600 text-xs mt-0.5'>
+                <p className='text-xs mt-0.5' style={{ color: 'var(--color-text-subtle)' }}>
                   Applied {new Date(m.createdAt).toLocaleDateString()}
                 </p>
                 {m.status === 'rejected' && m.rejectionReason && (
-                  <p className='text-red-400 text-xs mt-0.5'>Reason: {m.rejectionReason}</p>
+                  <p className='text-xs mt-0.5' style={{ color: 'var(--color-danger-text)' }}>Reason: {m.rejectionReason}</p>
                 )}
               </div>
               <div className='flex items-center gap-2 flex-shrink-0'>
@@ -157,9 +161,11 @@ const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }
     });
   };
 
+  const inputCls = 'w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]';
+
   return (
     <div className='space-y-3'>
-      <p className='text-gray-500 text-xs'>
+      <p className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>
         {linkedAuction
           ? 'Player applied for this auction. Assign a category to set their base price, then approve.'
           : 'Approving adds this player to the selected auction. Assign a category to set their base price.'}
@@ -168,17 +174,17 @@ const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }
       <div className='grid grid-cols-2 gap-2'>
         {/* Auction — fixed for account-linked, dropdown for legacy */}
         <div className='col-span-2'>
-          <label className='block text-gray-400 text-xs mb-1'>Auction</label>
+          <label className='block text-xs mb-1' style={{ color: 'var(--color-text-muted)' }}>Auction</label>
           {linkedAuction ? (
-            <div className='bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm'>
+            <div className='rounded-lg px-3 py-1.5 text-sm' style={{ backgroundColor: 'var(--color-surface-sunken)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
               {linkedAuction.name}
-              {linkedAuction.sport && <span className='text-gray-400 ml-2 text-xs capitalize'>({linkedAuction.sport})</span>}
+              {linkedAuction.sport && <span className='ml-2 text-xs capitalize' style={{ color: 'var(--color-text-muted)' }}>({linkedAuction.sport})</span>}
             </div>
           ) : (
             <select
               value={selectedAuction}
               onChange={(e) => { setSelectedAuction(e.target.value); setSelectedCategory(''); setBasePriceOverride(''); }}
-              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+              className={inputCls}
             >
               <option value=''>Select auction *</option>
               {auctions.map((a) => (
@@ -190,14 +196,14 @@ const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }
 
         {/* Category */}
         <div>
-          <label className='block text-gray-400 text-xs mb-1'>
+          <label className='block text-xs mb-1' style={{ color: 'var(--color-text-muted)' }}>
             Category {availableCategories.length === 0 ? '(none configured)' : ''}
           </label>
           {availableCategories.length > 0 ? (
             <select
               value={selectedCategory}
               onChange={handleCategoryChange}
-              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+              className={inputCls}
               disabled={!activeAuction}
             >
               <option value=''>Not assigned</option>
@@ -212,17 +218,17 @@ const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }
               onChange={(e) => setSelectedCategory(e.target.value)}
               placeholder='e.g. A+'
               disabled={!activeAuction}
-              className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40'
+              className={`${inputCls} placeholder-gray-500 disabled:opacity-40`}
             />
           )}
         </div>
 
         {/* Base Price */}
         <div>
-          <label className='block text-gray-400 text-xs mb-1'>
+          <label className='block text-xs mb-1' style={{ color: 'var(--color-text-muted)' }}>
             Base Price
             {autoPriceFromCategory != null && basePriceOverride === '' && (
-              <span className='text-indigo-400 ml-1'>(auto: {autoPriceFromCategory})</span>
+              <span className='ml-1' style={{ color: 'var(--color-accent)' }}>(auto: {autoPriceFromCategory})</span>
             )}
           </label>
           <input
@@ -231,31 +237,31 @@ const ApprovalForm = ({ registration, auctions, onConfirm, onCancel, isPending }
             value={basePriceOverride}
             onChange={(e) => setBasePriceOverride(e.target.value)}
             placeholder={autoPriceFromCategory != null ? String(autoPriceFromCategory) : 'e.g. 100'}
-            className='w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+            className={`${inputCls} placeholder-gray-500`}
           />
           {autoPriceFromCategory != null && basePriceOverride === '' && (
-            <p className='text-gray-600 text-xs mt-0.5'>Leave blank to use category price</p>
+            <p className='text-xs mt-0.5' style={{ color: 'var(--color-text-subtle)' }}>Leave blank to use category price</p>
           )}
         </div>
 
         {/* Set # */}
         <div>
-          <label className='block text-gray-400 text-xs mb-1'>Set #</label>
+          <label className='block text-xs mb-1' style={{ color: 'var(--color-text-muted)' }}>Set #</label>
           <input
             type='number'
             min={1}
             value={setNum}
             onChange={(e) => setSetNum(Number(e.target.value))}
-            className='w-20 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+            className='w-20 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]'
           />
         </div>
       </div>
 
       {/* Summary */}
       {canConfirm && (
-        <div className='bg-gray-900 rounded-lg px-3 py-2 text-xs text-gray-400'>
-          <span className='text-white'>{registration.name}</span>
-          {selectedCategory && <span className='text-indigo-300 ml-2'>[{selectedCategory}]</span>}
+        <div className='rounded-lg px-3 py-2 text-xs' style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-muted)' }}>
+          <span style={{ color: 'var(--color-text)' }}>{registration.name}</span>
+          {selectedCategory && <span className='ml-2' style={{ color: 'var(--color-accent)' }}>[{selectedCategory}]</span>}
           {effectiveBasePrice != null && <span className='ml-2'>· Base: {effectiveBasePrice}</span>}
           {!selectedCategory && <span className='text-yellow-500 ml-2'>· No category — will need manual base price</span>}
         </div>
@@ -321,8 +327,12 @@ const PlayerApprovalsTab = () => {
             key={s}
             onClick={() => setFilter(s)}
             className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-              filter === s ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              filter === s ? 'text-white' : 'hover:text-white'
             }`}
+            style={filter === s
+              ? { backgroundColor: 'var(--color-accent)' }
+              : { backgroundColor: 'var(--color-surface)', color: 'var(--color-text-muted)' }
+            }
           >
             {s}
           </button>
@@ -332,15 +342,15 @@ const PlayerApprovalsTab = () => {
       {isLoading ? (
         <div className='flex justify-center py-12'><Spinner /></div>
       ) : registrations.length === 0 ? (
-        <EmptyState icon='🏆' title='No registrations' description={`No ${filter} player registrations for your auctions`} />
+        <EmptyState icon='🎮' title='No registrations' description={`No ${filter} player registrations for your auctions`} />
       ) : (
         <div className='space-y-3'>
           {registrations.map((r) => (
-            <div key={r._id} className='bg-gray-800 rounded-xl p-4'>
+            <div key={r._id} className='rounded-xl p-4' style={{ backgroundColor: 'var(--color-surface)' }}>
               <div className='flex items-start justify-between gap-4'>
                 <div className='min-w-0'>
                   <div className='flex items-center gap-2 flex-wrap'>
-                    <p className='text-white font-medium'>{r.name}</p>
+                    <p className='font-medium' style={{ color: 'var(--color-text)' }}>{r.name}</p>
                     <Badge variant='blue'>{r.role}</Badge>
                     {r.gender && (
                       <Badge variant={r.gender === 'female' ? 'pink' : 'blue'}>
@@ -350,30 +360,30 @@ const PlayerApprovalsTab = () => {
                     {r.nationality === 'overseas' && <Badge variant='indigo'>Overseas</Badge>}
                   </div>
                   {r.userId ? (
-                    <p className='text-indigo-400 text-xs mt-0.5'>
+                    <p className='text-xs mt-0.5' style={{ color: 'var(--color-accent)' }}>
                       Account: {r.userId.name} · {r.userId.email}
                     </p>
                   ) : (
-                    <p className='text-gray-600 text-xs mt-0.5'>Legacy registration (no account)</p>
+                    <p className='text-xs mt-0.5' style={{ color: 'var(--color-text-subtle)' }}>Legacy registration (no account)</p>
                   )}
-                  <p className='text-gray-400 text-sm mt-0.5'>
+                  <p className='text-sm mt-0.5' style={{ color: 'var(--color-text-muted)' }}>
                     {r.country && `${r.country}`}
                     {r.contactEmail && ` · ${r.contactEmail}`}
                   </p>
                   {r.stats && Object.keys(r.stats).length > 0 && (
                     <div className='flex flex-wrap gap-2 mt-1.5'>
                       {Object.entries(r.stats).map(([k, v]) => (
-                        <span key={k} className='bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded'>
+                        <span key={k} className='text-xs px-2 py-0.5 rounded' style={{ backgroundColor: 'var(--color-surface-sunken)', color: 'var(--color-text-muted)' }}>
                           {k}: {v}
                         </span>
                       ))}
                     </div>
                   )}
-                  <p className='text-gray-600 text-xs mt-1.5'>
+                  <p className='text-xs mt-1.5' style={{ color: 'var(--color-text-subtle)' }}>
                     Submitted {new Date(r.createdAt).toLocaleDateString()}
                   </p>
                   {r.status === 'rejected' && r.rejectionReason && (
-                    <p className='text-red-400 text-xs mt-1'>Reason: {r.rejectionReason}</p>
+                    <p className='text-xs mt-1' style={{ color: 'var(--color-danger-text)' }}>Reason: {r.rejectionReason}</p>
                   )}
                 </div>
                 <div className='flex-shrink-0'>
@@ -382,7 +392,7 @@ const PlayerApprovalsTab = () => {
               </div>
 
               {r.status === 'pending' && (
-                <div className='mt-3 pt-3 border-t border-gray-700'>
+                <div className='mt-3 pt-3' style={{ borderTop: '1px solid var(--color-border)' }}>
                   {assigningId === r._id ? (
                     <ApprovalForm
                       registration={r}
@@ -430,24 +440,32 @@ const AdminApprovalsPage = () => {
   return (
     <div className='p-6 max-w-3xl mx-auto'>
       <div className='mb-6'>
-        <h1 className='text-white text-2xl font-bold'>Approvals</h1>
-        <p className='text-gray-400 text-sm mt-1'>Review and approve team owner registrations and player applications</p>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>Approvals</h1>
+        <p className='text-sm mt-1' style={{ color: 'var(--color-text-muted)' }}>Review and approve team owner registrations and player applications</p>
       </div>
 
-      <div className='flex gap-1 bg-gray-800 rounded-xl p-1 mb-6 w-fit'>
+      <div className='flex gap-1 rounded-xl p-1 mb-6 w-fit' style={{ backgroundColor: 'var(--color-surface)' }}>
         <button
           onClick={() => setTab('memberships')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'memberships' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'memberships' ? 'text-white' : 'hover:text-white'
           }`}
+          style={tab === 'memberships'
+            ? { backgroundColor: 'var(--color-accent)' }
+            : { color: 'var(--color-text-muted)' }
+          }
         >
           Team Owners
         </button>
         <button
           onClick={() => setTab('players')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'players' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'players' ? 'text-white' : 'hover:text-white'
           }`}
+          style={tab === 'players'
+            ? { backgroundColor: 'var(--color-accent)' }
+            : { color: 'var(--color-text-muted)' }
+          }
         >
           Players
         </button>

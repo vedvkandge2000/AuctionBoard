@@ -9,21 +9,21 @@ import Spinner from '../components/ui/Spinner';
 import { listSportTemplates } from '../services/sportTemplateService';
 
 const Section = ({ title, children }) => (
-  <div className='bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4'>
-    <h2 className='text-white font-semibold border-b border-gray-800 pb-3'>{title}</h2>
+  <div className='rounded-2xl p-5 space-y-4' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+    <h2 className='font-semibold pb-3' style={{ color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)' }}>{title}</h2>
     {children}
   </div>
 );
 
 const Field = ({ label, hint, children }) => (
   <div>
-    <label className='block text-gray-400 text-sm mb-1.5'>{label}</label>
+    <label className='block text-sm mb-1.5' style={{ color: 'var(--color-text-muted)' }}>{label}</label>
     {children}
-    {hint && <p className='text-gray-600 text-xs mt-1'>{hint}</p>}
+    {hint && <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>{hint}</p>}
   </div>
 );
 
-const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+const inputCls = 'w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)]';
 
 const BidTierBuilder = ({ tiers, onChange }) => {
   const update = (i, key, val) => {
@@ -38,7 +38,7 @@ const BidTierBuilder = ({ tiers, onChange }) => {
       {tiers.map((tier, i) => (
         <div key={i} className='flex gap-2 items-center'>
           <div className='flex-1'>
-            <label className='text-gray-500 text-xs'>Up to amount</label>
+            <label className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>Up to amount</label>
             <input
               type='number'
               className={inputCls}
@@ -48,11 +48,11 @@ const BidTierBuilder = ({ tiers, onChange }) => {
             />
           </div>
           <div className='flex-1'>
-            <label className='text-gray-500 text-xs'>Increment</label>
+            <label className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>Increment</label>
             <input type='number' className={inputCls} value={tier.increment} onChange={(e) => update(i, 'increment', e.target.value)} />
           </div>
           {tiers.length > 1 && (
-            <button onClick={() => remove(i)} className='text-red-400 hover:text-red-300 mt-4 px-2'>×</button>
+            <button onClick={() => remove(i)} className='mt-4 px-2' style={{ color: 'var(--color-danger-text)' }}>×</button>
           )}
         </div>
       ))}
@@ -97,7 +97,7 @@ const CategoryBuilder = ({ categories, basePrices, onChange }) => {
   return (
     <div className='space-y-2'>
       {categories.length > 0 && (
-        <div className='grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-500 px-1 mb-1'>
+        <div className='grid grid-cols-[1fr_1fr_auto] gap-2 text-xs px-1 mb-1' style={{ color: 'var(--color-text-subtle)' }}>
           <span>Category Name</span>
           <span>Base Price</span>
           <span />
@@ -121,11 +121,11 @@ const CategoryBuilder = ({ categories, basePrices, onChange }) => {
             placeholder='Base price'
             onChange={(e) => updatePrice(cat, e.target.value)}
           />
-          <button onClick={() => remove(i)} className='text-red-400 hover:text-red-300 px-2 text-lg leading-none'>×</button>
+          <button onClick={() => remove(i)} className='px-2 text-lg leading-none' style={{ color: 'var(--color-danger-text)' }}>×</button>
         </div>
       ))}
       <Button size='sm' variant='ghost' type='button' onClick={add}>+ Add Category</Button>
-      <p className='text-gray-600 text-xs mt-1'>
+      <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>
         Row order = auction sequence. Base price is auto-applied when a player with that category is approved into this auction.
       </p>
     </div>
@@ -215,9 +215,9 @@ const AuctionConfigPage = () => {
 
   if (auction?.status !== 'draft') {
     return (
-      <div className='text-center py-16 text-gray-400'>
+      <div className='text-center py-16' style={{ color: 'var(--color-text-muted)' }}>
         <p className='text-4xl mb-4'>🔒</p>
-        <p>Config can only be edited while auction is in <strong className='text-white'>draft</strong> status.</p>
+        <p>Config can only be edited while auction is in <strong style={{ color: 'var(--color-text)' }}>draft</strong> status.</p>
         <Button className='mt-4' onClick={() => navigate(`/auction/${id}`)}>Back to Auction</Button>
       </div>
     );
@@ -226,8 +226,8 @@ const AuctionConfigPage = () => {
   return (
     <div className='animate-fade-in max-w-2xl'>
       <div className='mb-5'>
-        <h1 className='text-2xl font-bold text-white'>Auction Config</h1>
-        <p className='text-gray-400 text-sm mt-0.5'>{auction.name}</p>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>Auction Config</h1>
+        <p className='text-sm mt-0.5' style={{ color: 'var(--color-text-muted)' }}>{auction.name}</p>
       </div>
 
       <form onSubmit={handleSubmit} className='space-y-5'>
@@ -277,7 +277,7 @@ const AuctionConfigPage = () => {
         </Section>
 
         <Section title={`Bid Increment Tiers (${form.currencyUnit}s)`}>
-          <p className='text-gray-500 text-xs'>Define increment rules by bid range. Last row's "up to" is treated as infinity.</p>
+          <p className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>Define increment rules by bid range. Last row's "up to" is treated as infinity.</p>
           <BidTierBuilder tiers={form.bidIncrementTiers} onChange={(tiers) => handle('bidIncrementTiers', tiers)} />
         </Section>
 
@@ -301,7 +301,7 @@ const AuctionConfigPage = () => {
         <Section title='RTM Cards'>
           <div className='flex items-center gap-3'>
             <input type='checkbox' id='rtm' checked={form.rtmEnabled} onChange={(e) => handle('rtmEnabled', e.target.checked)} className='h-4 w-4 rounded text-indigo-600' />
-            <label htmlFor='rtm' className='text-gray-300 text-sm'>Enable RTM (Right to Match) cards</label>
+            <label htmlFor='rtm' className='text-sm' style={{ color: 'var(--color-text-muted)' }}>Enable RTM (Right to Match) cards</label>
           </div>
           {form.rtmEnabled && (
             <Field label='RTM Cards per Team'>

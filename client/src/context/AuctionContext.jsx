@@ -7,8 +7,10 @@ const initialState = {
   auction: null,
   teams: [],
   bidHistory: [],
+  bidSeq: 0,             // monotonic counter for stable AnimatePresence keys
   teamMaxBids: {},       // { [teamId]: maxBid } — updated each time a new player goes live
   rtmPrompt: null,       // { player, winningBid, expiresAt } or null
+  lastResult: null,      // { type: 'sold'|'unsold', player, timestamp } — drives SOLD/UNSOLD overlay
   squadRefreshAt: null,  // bumped when a player is released — triggers squad panel refetch
   releaseRequests: [],   // pending release requests (live, via socket)
   connected: false,
@@ -23,17 +25,22 @@ const reducer = (state, action) => {
         ...state,
         auction: { ...state.auction, currentPlayerId: action.player, currentBid: action.basePrice, currentBidTeamId: null },
         bidHistory: [],
+        bidSeq: 0,
         teamMaxBids: action.teamMaxBids || {},
       };
-    case 'BID_PLACED':
+    case 'BID_PLACED': {
+      const nextSeq = state.bidSeq + 1;
       return {
         ...state,
+        bidSeq: nextSeq,
         auction: { ...state.auction, currentBid: action.amount, currentBidTeamId: { _id: action.teamId, name: action.teamName } },
-        bidHistory: [action, ...state.bidHistory].slice(0, 50),
+        bidHistory: [{ ...action, seq: nextSeq }, ...state.bidHistory].slice(0, 50),
       };
+    }
     case 'SOLD':
       return {
         ...state,
+        lastResult: { type: 'sold', player: action.player, timestamp: Date.now() },
         auction: {
           ...state.auction,
           currentPlayerId: null,
@@ -45,6 +52,7 @@ const reducer = (state, action) => {
     case 'UNSOLD':
       return {
         ...state,
+        lastResult: { type: 'unsold', player: action.player, timestamp: Date.now() },
         auction: {
           ...state.auction,
           currentPlayerId: null,
@@ -65,7 +73,6 @@ const reducer = (state, action) => {
       const updatedTeams = state.teams.map((t) =>
         t._id === action.teamId ? { ...t, remainingPurse: action.remainingPurse } : t
       );
-      // Remove approved request from pending list
       const remainingRequests = state.releaseRequests.filter(
         (r) => !(r.playerId?._id === action.playerId?.toString() || r.playerId === action.playerId)
       );

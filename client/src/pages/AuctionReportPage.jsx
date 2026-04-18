@@ -9,6 +9,8 @@ import { getAuctionReport } from '../services/auctionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import Spinner from '../components/ui/Spinner';
 
+const getVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 const COLORS = {
   indigo: '#6366f1',
   green: '#22c55e',
@@ -34,49 +36,56 @@ const tooltipStyle = {
 };
 
 const Card = ({ children, className = '' }) => (
-  <div className={`bg-gray-900 border border-gray-800 rounded-2xl p-5 ${className}`}>
+  <div className={`rounded-2xl p-5 ${className}`} style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
     {children}
   </div>
 );
 
 const CardTitle = ({ children }) => (
-  <h3 className='text-white font-semibold text-sm mb-4 border-b border-gray-800 pb-3'>{children}</h3>
+  <h3 className='font-semibold text-sm mb-4 pb-3' style={{ color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)' }}>{children}</h3>
 );
 
-const StatCard = ({ label, value, sub, color = 'text-white' }) => (
-  <div className='bg-gray-900 border border-gray-800 rounded-2xl p-4'>
-    <p className='text-gray-500 text-xs mb-1'>{label}</p>
-    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-    {sub && <p className='text-gray-500 text-xs mt-1'>{sub}</p>}
+const StatCard = ({ label, value, sub, color }) => (
+  <div className='rounded-2xl p-4' style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+    <p className='text-xs mb-1' style={{ color: 'var(--color-text-subtle)' }}>{label}</p>
+    <p className='text-2xl font-bold' style={{ color: color || 'var(--color-text)' }}>{value}</p>
+    {sub && <p className='text-xs mt-1' style={{ color: 'var(--color-text-subtle)' }}>{sub}</p>}
   </div>
 );
 
 // ---- Overview Tab ----
 const OverviewTab = ({ summary, categoryBreakdown, roleBreakdown, sym, unit }) => {
+  const chartColors = {
+    primary: getVar('--color-accent') || '#6366f1',
+    success: getVar('--color-success') || '#22c55e',
+    danger: getVar('--color-danger') || '#ef4444',
+    warning: getVar('--color-warning') || '#eab308',
+  };
+
   const soldPct = summary.totalPlayers > 0 ? Math.round((summary.soldCount / summary.totalPlayers) * 100) : 0;
   const pieData = [
     { name: 'Sold', value: summary.soldCount },
     { name: 'Unsold', value: summary.unsoldCount },
     { name: 'In Pool', value: summary.poolCount },
   ].filter((d) => d.value > 0);
-  const pieColors = [COLORS.green, COLORS.red, COLORS.gray];
+  const pieColors = [chartColors.success, chartColors.danger, COLORS.gray];
 
   return (
     <div className='space-y-6'>
       {/* Stat cards */}
       <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
         <StatCard label='Total Players' value={summary.totalPlayers} />
-        <StatCard label='Sold' value={summary.soldCount} color='text-green-400'
+        <StatCard label='Sold' value={summary.soldCount} color={chartColors.success}
           sub={`${soldPct}% of pool`} />
-        <StatCard label='Unsold' value={summary.unsoldCount} color='text-red-400' />
+        <StatCard label='Unsold' value={summary.unsoldCount} color={chartColors.danger} />
         <StatCard label='Total Spent'
           value={formatCurrency(summary.totalSpent, sym, unit)}
-          color='text-indigo-400' />
+          color={chartColors.primary} />
         <StatCard label='Avg Price'
           value={summary.avgPrice ? formatCurrency(summary.avgPrice, sym, unit) : '—'} />
         <StatCard label='Highest Bid'
           value={summary.maxPrice ? formatCurrency(summary.maxPrice, sym, unit) : '—'}
-          color='text-yellow-400' />
+          color={chartColors.warning} />
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -113,8 +122,8 @@ const OverviewTab = ({ summary, categoryBreakdown, roleBreakdown, sym, unit }) =
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip {...tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
-                <Bar dataKey='sold' name='Sold' fill={COLORS.green} radius={[4, 4, 0, 0]} />
-                <Bar dataKey='unsold' name='Unsold' fill={COLORS.red} radius={[4, 4, 0, 0]} />
+                <Bar dataKey='sold' name='Sold' fill={chartColors.success} radius={[4, 4, 0, 0]} />
+                <Bar dataKey='unsold' name='Unsold' fill={chartColors.danger} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -132,7 +141,7 @@ const OverviewTab = ({ summary, categoryBreakdown, roleBreakdown, sym, unit }) =
               <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip {...tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
-              <Bar dataKey='sold' name='Sold' fill={COLORS.indigo} radius={[4, 4, 0, 0]} />
+              <Bar dataKey='sold' name='Sold' fill={chartColors.primary} radius={[4, 4, 0, 0]} />
               <Bar dataKey='unsold' name='Unsold' fill={COLORS.gray} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -277,6 +286,13 @@ const generateTeamReport = (team, auction, sym, unit) => {
 
 // ---- Teams Tab ----
 const TeamsTab = ({ teams, sym, unit, auction }) => {
+  const chartColors = {
+    primary: getVar('--color-accent') || '#6366f1',
+    success: getVar('--color-success') || '#22c55e',
+    danger: getVar('--color-danger') || '#ef4444',
+    warning: getVar('--color-warning') || '#eab308',
+  };
+
   const chartData = teams
     .map((t) => ({
       name: t.shortName,
@@ -297,7 +313,7 @@ const TeamsTab = ({ teams, sym, unit, auction }) => {
             <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip {...tooltipStyle} formatter={(v) => formatCurrency(v, sym, unit)} />
             <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
-            <Bar dataKey='Spent' fill={COLORS.indigo} radius={[4, 4, 0, 0]} stackId='a' />
+            <Bar dataKey='Spent' fill={chartColors.primary} radius={[4, 4, 0, 0]} stackId='a' />
             <Bar dataKey='Remaining' fill={COLORS.gray} radius={[4, 4, 0, 0]} stackId='a' />
           </BarChart>
         </ResponsiveContainer>
@@ -309,13 +325,14 @@ const TeamsTab = ({ teams, sym, unit, auction }) => {
           <Card key={team._id}>
             <div className='flex items-center gap-2 mb-3'>
               <div className='w-3 h-3 rounded-full flex-shrink-0' style={{ backgroundColor: team.colorHex || '#6366f1' }} />
-              <span className='text-white font-semibold text-sm'>{team.name}</span>
-              <span className='text-gray-500 text-xs'>({team.shortName})</span>
+              <span className='font-semibold text-sm' style={{ color: 'var(--color-text)' }}>{team.name}</span>
+              <span className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>({team.shortName})</span>
               <div className='ml-auto flex items-center gap-2'>
-                <span className='text-xs text-indigo-400 font-medium'>{team.playerCount} players</span>
+                <span className='text-xs font-medium' style={{ color: 'var(--color-accent)' }}>{team.playerCount} players</span>
                 <button
                   onClick={() => generateTeamReport(team, auction, sym, unit)}
-                  className='text-xs text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-2 py-0.5 rounded transition-colors'
+                  className='text-xs px-2 py-0.5 rounded transition-colors hover:text-white'
+                  style={{ color: 'var(--color-text-subtle)', border: '1px solid var(--color-border)' }}
                   title='Open printable team report'
                 >
                   Download
@@ -325,38 +342,38 @@ const TeamsTab = ({ teams, sym, unit, auction }) => {
 
             <div className='flex gap-4 text-xs mb-3'>
               <div>
-                <p className='text-gray-500'>Spent</p>
-                <p className='text-white font-medium'>{formatCurrency(team.totalSpent, sym, unit)}</p>
+                <p style={{ color: 'var(--color-text-subtle)' }}>Spent</p>
+                <p className='font-medium' style={{ color: 'var(--color-text)' }}>{formatCurrency(team.totalSpent, sym, unit)}</p>
               </div>
               <div>
-                <p className='text-gray-500'>Remaining</p>
-                <p className='text-green-400 font-medium'>{formatCurrency(team.remainingPurse, sym, unit)}</p>
+                <p style={{ color: 'var(--color-text-subtle)' }}>Remaining</p>
+                <p className='font-medium' style={{ color: 'var(--color-success-text)' }}>{formatCurrency(team.remainingPurse, sym, unit)}</p>
               </div>
               <div>
-                <p className='text-gray-500'>Budget</p>
-                <p className='text-gray-300 font-medium'>{formatCurrency(team.initialPurse, sym, unit)}</p>
+                <p style={{ color: 'var(--color-text-subtle)' }}>Budget</p>
+                <p className='font-medium' style={{ color: 'var(--color-text-muted)' }}>{formatCurrency(team.initialPurse, sym, unit)}</p>
               </div>
             </div>
 
             {team.players.length === 0 ? (
-              <p className='text-gray-600 text-xs'>No players signed</p>
+              <p className='text-xs' style={{ color: 'var(--color-text-subtle)' }}>No players signed</p>
             ) : (
               <div className='space-y-1'>
                 {team.players
                   .slice()
                   .sort((a, b) => b.finalPrice - a.finalPrice)
                   .map((p, i) => (
-                    <div key={i} className='flex items-center justify-between gap-2 bg-gray-800 rounded-lg px-3 py-1.5'>
+                    <div key={i} className='flex items-center justify-between gap-2 rounded-lg px-3 py-1.5' style={{ backgroundColor: 'var(--color-surface-sunken)' }}>
                       <div className='flex items-center gap-2 min-w-0'>
-                        <span className='text-white text-xs font-medium truncate'>{p.name}</span>
+                        <span className='text-xs font-medium truncate' style={{ color: 'var(--color-text)' }}>{p.name}</span>
                         {p.category && (
-                          <span className='text-xs bg-indigo-900/50 text-indigo-300 px-1.5 py-0.5 rounded flex-shrink-0'>
+                          <span className='text-xs px-1.5 py-0.5 rounded flex-shrink-0' style={{ backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>
                             {p.category}
                           </span>
                         )}
-                        {p.role && <span className='text-gray-500 text-xs flex-shrink-0'>{p.role}</span>}
+                        {p.role && <span className='text-xs flex-shrink-0' style={{ color: 'var(--color-text-subtle)' }}>{p.role}</span>}
                       </div>
-                      <span className='text-green-400 text-xs font-medium flex-shrink-0'>
+                      <span className='text-xs font-medium flex-shrink-0' style={{ color: 'var(--color-success-text)' }}>
                         {formatCurrency(p.finalPrice, sym, unit)}
                       </span>
                     </div>
@@ -387,12 +404,12 @@ const PlayersTab = ({ soldPlayers, sym, unit }) => {
       <Card>
         <CardTitle>Top Players by Final Price</CardTitle>
         {top10.length === 0 ? (
-          <p className='text-gray-500 text-sm'>No players sold yet.</p>
+          <p className='text-sm' style={{ color: 'var(--color-text-subtle)' }}>No players sold yet.</p>
         ) : (
           <div className='overflow-x-auto'>
             <table className='w-full text-xs'>
               <thead>
-                <tr className='text-gray-500 border-b border-gray-800'>
+                <tr style={{ color: 'var(--color-text-subtle)', borderBottom: '1px solid var(--color-border)' }}>
                   <th className='text-left py-2 pr-3 font-medium w-6'>#</th>
                   <th className='text-left py-2 pr-3 font-medium'>Player</th>
                   <th className='text-left py-2 pr-3 font-medium'>Team</th>
@@ -407,35 +424,35 @@ const PlayersTab = ({ soldPlayers, sym, unit }) => {
                 {top10.map((p, i) => {
                   const premium = p.basePrice > 0 ? Math.round(((p.finalPrice - p.basePrice) / p.basePrice) * 100) : null;
                   return (
-                    <tr key={p._id} className='border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors'>
-                      <td className='py-2 pr-3 text-gray-500 font-mono'>{i + 1}</td>
-                      <td className='py-2 pr-3 text-white font-medium'>{p.name}</td>
+                    <tr key={p._id} className='transition-colors' style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
+                      <td className='py-2 pr-3 font-mono' style={{ color: 'var(--color-text-subtle)' }}>{i + 1}</td>
+                      <td className='py-2 pr-3 font-medium' style={{ color: 'var(--color-text)' }}>{p.name}</td>
                       <td className='py-2 pr-3'>
                         {p.team ? (
                           <span className='flex items-center gap-1.5'>
                             <span className='w-2 h-2 rounded-full inline-block flex-shrink-0'
                               style={{ backgroundColor: p.team.colorHex || '#6366f1' }} />
-                            <span className='text-gray-300'>{p.team.shortName}</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{p.team.shortName}</span>
                           </span>
-                        ) : <span className='text-gray-600'>—</span>}
+                        ) : <span style={{ color: 'var(--color-text-subtle)' }}>—</span>}
                       </td>
-                      <td className='py-2 pr-3 text-gray-400'>{p.category || '—'}</td>
-                      <td className='py-2 pr-3 text-gray-400'>{p.role || '—'}</td>
+                      <td className='py-2 pr-3' style={{ color: 'var(--color-text-muted)' }}>{p.category || '—'}</td>
+                      <td className='py-2 pr-3' style={{ color: 'var(--color-text-muted)' }}>{p.role || '—'}</td>
                       {hasBase && (
-                        <td className='py-2 pr-3 text-right text-gray-400'>
+                        <td className='py-2 pr-3 text-right' style={{ color: 'var(--color-text-muted)' }}>
                           {p.basePrice ? formatCurrency(p.basePrice, sym, unit) : '—'}
                         </td>
                       )}
-                      <td className='py-2 pr-3 text-right text-green-400 font-medium'>
+                      <td className='py-2 pr-3 text-right font-medium' style={{ color: 'var(--color-success-text)' }}>
                         {formatCurrency(p.finalPrice, sym, unit)}
                       </td>
                       {hasBase && (
                         <td className='py-2 text-right'>
                           {premium !== null ? (
-                            <span className={premium > 0 ? 'text-yellow-400' : 'text-gray-500'}>
+                            <span style={{ color: premium > 0 ? 'var(--color-warning-text)' : 'var(--color-text-subtle)' }}>
                               {premium > 0 ? `+${premium}%` : `${premium}%`}
                             </span>
-                          ) : <span className='text-gray-600'>—</span>}
+                          ) : <span style={{ color: 'var(--color-text-subtle)' }}>—</span>}
                         </td>
                       )}
                     </tr>
@@ -466,8 +483,8 @@ const PlayersTab = ({ soldPlayers, sym, unit }) => {
                   const d = payload[0].payload;
                   return (
                     <div style={tooltipStyle.contentStyle} className='text-xs space-y-1'>
-                      <p className='text-white font-semibold'>{d.name}</p>
-                      <p className='text-gray-400'>{d.role}</p>
+                      <p style={{ color: 'var(--color-text)' }} className='font-semibold'>{d.name}</p>
+                      <p style={{ color: 'var(--color-text-muted)' }}>{d.role}</p>
                       <p>Base: {formatCurrency(d.x, sym, unit)}</p>
                       <p>Final: {formatCurrency(d.y, sym, unit)}</p>
                     </div>
@@ -494,6 +511,13 @@ const PlayersTab = ({ soldPlayers, sym, unit }) => {
 
 // ---- Financial Tab ----
 const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
+  const chartColors = {
+    primary: getVar('--color-accent') || '#6366f1',
+    success: getVar('--color-success') || '#22c55e',
+    danger: getVar('--color-danger') || '#ef4444',
+    warning: getVar('--color-warning') || '#eab308',
+  };
+
   const utilisationData = teams
     .map((t) => ({
       name: t.shortName,
@@ -530,7 +554,7 @@ const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
             <Tooltip {...tooltipStyle} formatter={(v) => `${v}%`} />
             <Bar dataKey='utilisation' name='Budget Used' radius={[4, 4, 0, 0]}>
               {utilisationData.map((entry, i) => (
-                <Cell key={i} fill={entry.colorHex || COLORS.indigo} />
+                <Cell key={i} fill={entry.colorHex || chartColors.primary} />
               ))}
             </Bar>
           </BarChart>
@@ -543,7 +567,7 @@ const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
         <div className='overflow-x-auto'>
           <table className='w-full text-xs'>
             <thead>
-              <tr className='text-gray-500 border-b border-gray-800'>
+              <tr style={{ color: 'var(--color-text-subtle)', borderBottom: '1px solid var(--color-border)' }}>
                 <th className='text-left py-2 pr-3 font-medium'>Team</th>
                 <th className='text-right py-2 pr-3 font-medium'>Budget</th>
                 <th className='text-right py-2 pr-3 font-medium'>Spent</th>
@@ -559,22 +583,22 @@ const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
                 .map((t) => {
                   const pct = t.initialPurse > 0 ? Math.round((t.totalSpent / t.initialPurse) * 100) : 0;
                   return (
-                    <tr key={t._id} className='border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors'>
+                    <tr key={t._id} className='transition-colors' style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
                       <td className='py-2 pr-3'>
                         <div className='flex items-center gap-2'>
                           <div className='w-2.5 h-2.5 rounded-full flex-shrink-0' style={{ backgroundColor: t.colorHex || '#6366f1' }} />
-                          <span className='text-white font-medium'>{t.name}</span>
+                          <span className='font-medium' style={{ color: 'var(--color-text)' }}>{t.name}</span>
                         </div>
                       </td>
-                      <td className='py-2 pr-3 text-right text-gray-400'>{formatCurrency(t.initialPurse, sym, unit)}</td>
-                      <td className='py-2 pr-3 text-right text-indigo-400 font-medium'>{formatCurrency(t.totalSpent, sym, unit)}</td>
-                      <td className='py-2 pr-3 text-right text-green-400'>{formatCurrency(t.remainingPurse, sym, unit)}</td>
+                      <td className='py-2 pr-3 text-right' style={{ color: 'var(--color-text-muted)' }}>{formatCurrency(t.initialPurse, sym, unit)}</td>
+                      <td className='py-2 pr-3 text-right font-medium' style={{ color: 'var(--color-accent)' }}>{formatCurrency(t.totalSpent, sym, unit)}</td>
+                      <td className='py-2 pr-3 text-right' style={{ color: 'var(--color-success-text)' }}>{formatCurrency(t.remainingPurse, sym, unit)}</td>
                       <td className='py-2 pr-3 text-right'>
-                        <span className={pct >= 80 ? 'text-yellow-400' : pct >= 50 ? 'text-indigo-400' : 'text-gray-400'}>
+                        <span style={{ color: pct >= 80 ? 'var(--color-warning-text)' : pct >= 50 ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
                           {pct}%
                         </span>
                       </td>
-                      <td className='py-2 text-right text-gray-300'>{t.playerCount}</td>
+                      <td className='py-2 text-right' style={{ color: 'var(--color-text-muted)' }}>{t.playerCount}</td>
                     </tr>
                   );
                 })}
@@ -590,7 +614,7 @@ const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
           <div className='overflow-x-auto'>
             <table className='w-full text-xs'>
               <thead>
-                <tr className='text-gray-500 border-b border-gray-800'>
+                <tr style={{ color: 'var(--color-text-subtle)', borderBottom: '1px solid var(--color-border)' }}>
                   <th className='text-left py-2 pr-3 font-medium'>Category</th>
                   <th className='text-right py-2 pr-3 font-medium'>Players Sold</th>
                   <th className='text-right py-2 pr-3 font-medium'>Avg Base</th>
@@ -600,21 +624,21 @@ const FinancialTab = ({ teams, categoryBreakdown, soldPlayers, sym, unit }) => {
               </thead>
               <tbody>
                 {catInflation.map((c) => (
-                  <tr key={c.category} className='border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors'>
-                    <td className='py-2 pr-3 text-white font-medium'>{c.category}</td>
-                    <td className='py-2 pr-3 text-right text-gray-400'>{c.sold}</td>
-                    <td className='py-2 pr-3 text-right text-gray-400'>
+                  <tr key={c.category} className='transition-colors' style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
+                    <td className='py-2 pr-3 font-medium' style={{ color: 'var(--color-text)' }}>{c.category}</td>
+                    <td className='py-2 pr-3 text-right' style={{ color: 'var(--color-text-muted)' }}>{c.sold}</td>
+                    <td className='py-2 pr-3 text-right' style={{ color: 'var(--color-text-muted)' }}>
                       {c.avgBase ? formatCurrency(c.avgBase, sym, unit) : '—'}
                     </td>
-                    <td className='py-2 pr-3 text-right text-indigo-400 font-medium'>
+                    <td className='py-2 pr-3 text-right font-medium' style={{ color: 'var(--color-accent)' }}>
                       {formatCurrency(c.avgPrice, sym, unit)}
                     </td>
                     <td className='py-2 text-right'>
                       {c.inflation !== null ? (
-                        <span className={c.inflation > 0 ? 'text-yellow-400 font-medium' : 'text-gray-500'}>
+                        <span style={{ color: c.inflation > 0 ? 'var(--color-warning-text)' : 'var(--color-text-subtle)' }} className={c.inflation > 0 ? 'font-medium' : ''}>
                           {c.inflation > 0 ? `+${c.inflation}%` : `${c.inflation}%`}
                         </span>
-                      ) : <span className='text-gray-600'>—</span>}
+                      ) : <span style={{ color: 'var(--color-text-subtle)' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -650,7 +674,7 @@ const AuctionReportPage = () => {
 
   if (error) {
     return (
-      <div className='bg-red-900/20 border border-red-800 rounded-2xl p-6 text-red-400 text-sm'>
+      <div className='rounded-2xl p-6 text-sm' style={{ backgroundColor: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', color: 'var(--color-danger-text)' }}>
         {error.response?.data?.message || 'Failed to load report.'}
       </div>
     );
@@ -665,29 +689,33 @@ const AuctionReportPage = () => {
       {/* Header */}
       <div>
         <div className='flex items-center gap-3 mb-1'>
-          <h1 className='text-2xl font-bold text-white'>{auction.name}</h1>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
+          <h1 className='text-2xl font-bold' style={{ color: 'var(--color-text)' }}>{auction.name}</h1>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border`} style={
             auction.status === 'completed'
-              ? 'bg-blue-900/30 text-blue-300 border-blue-800'
-              : 'bg-green-900/30 text-green-300 border-green-800'
-          }`}>
+              ? { backgroundColor: 'var(--color-accent-muted)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }
+              : { backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success-text)', borderColor: 'var(--color-success-border)' }
+          }>
             {auction.status}
           </span>
         </div>
-        <p className='text-gray-400 text-sm capitalize'>
+        <p className='text-sm capitalize' style={{ color: 'var(--color-text-muted)' }}>
           {auction.sport} · Round {auction.currentRound} · {summary.soldCount} players sold
         </p>
       </div>
 
       {/* Tabs */}
-      <div className='flex gap-1 bg-gray-800 rounded-xl p-1 w-fit'>
+      <div className='flex gap-1 rounded-xl p-1 w-fit' style={{ backgroundColor: 'var(--color-surface)' }}>
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === t ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
+              tab === t ? 'text-white' : 'hover:text-white'
             }`}
+            style={tab === t
+              ? { backgroundColor: 'var(--color-accent)' }
+              : { color: 'var(--color-text-muted)' }
+            }
           >
             {t}
           </button>

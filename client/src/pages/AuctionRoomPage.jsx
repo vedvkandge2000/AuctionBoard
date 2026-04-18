@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAuction } from '../services/auctionService';
@@ -16,13 +17,14 @@ import RTMPrompt from '../components/auction/RTMPrompt';
 import TeamSquadPanel from '../components/auction/TeamSquadPanel';
 import MySquadPanel from '../components/auction/MySquadPanel';
 import Spinner from '../components/ui/Spinner';
-import { useState, useEffect } from 'react';
+import Badge from '../components/ui/Badge';
 
 const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
-  const { auction, bidHistory, placeBid, lastBidError, dispatch } = useAuction();
+  const { auction, bidHistory, placeBid, lastBidError, dispatch, lastResult } = useAuction();
   const { isAdmin, isTeamOwner, user } = useAuth();
   const { addToast } = useToast();
   const [bidPending, setBidPending] = useState(false);
+  const [soldOverlay, setSoldOverlay] = useState(null); // 'sold' | 'unsold' | null
 
   useEffect(() => {
     if (lastBidError) {
@@ -32,9 +34,18 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
     }
   }, [lastBidError]);
 
+  // Drive SOLD/UNSOLD overlay from AuctionContext lastResult
+  useEffect(() => {
+    if (!lastResult) return;
+    setSoldOverlay(lastResult.type);
+    const timer = setTimeout(() => setSoldOverlay(null), 2500);
+    return () => clearTimeout(timer);
+  }, [lastResult?.timestamp]);
+
   const liveAuction = auction || initialAuction;
-  // Find the current user's team in this auction by ownerId (no longer stored in JWT)
-  const myTeam = isTeamOwner ? teams.find((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id) : null;
+  const myTeam = isTeamOwner
+    ? teams.find((t) => t.ownerId?._id === user?.id || t.ownerId === user?.id)
+    : null;
 
   const handleBid = async (amount) => {
     setBidPending(true);
@@ -43,23 +54,52 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
     } catch (e) {
       addToast('Failed to place bid', 'error');
     } finally {
-      // Socket confirmation clears pending state
       setTimeout(() => setBidPending(false), 1500);
     }
   };
 
   return (
     <div className='space-y-4 animate-fade-in'>
+      {/* Stadium atmosphere header */}
+      <div
+        className='rounded-2xl px-5 py-3 flex items-center justify-between'
+        style={{ background: 'var(--gradient-card-live)', border: '1px solid var(--color-border)' }}
+      >
+        <div className='flex items-center gap-3'>
+          <span
+            className='w-2.5 h-2.5 rounded-full flex-shrink-0'
+            style={{
+              backgroundColor: liveAuction.status === 'live' ? 'var(--color-success)' : 'var(--color-text-subtle)',
+              animation: liveAuction.status === 'live' ? 'liveGlow 2s ease-out infinite' : 'none',
+            }}
+          />
+          <span className='font-semibold text-sm' style={{ color: 'var(--color-text)' }}>
+            {liveAuction.name}
+          </span>
+          {liveAuction.sport && (
+            <span className='text-xs capitalize' style={{ color: 'var(--color-text-muted)' }}>
+              · {liveAuction.sport}
+            </span>
+          )}
+        </div>
+        <Badge variant={liveAuction.status === 'live' ? 'green' : liveAuction.status === 'paused' ? 'yellow' : 'default'}>
+          {liveAuction.status}
+        </Badge>
+      </div>
+
       <AuctionStatusBanner auction={liveAuction} />
 
-      {/* Desktop: 3-col layout */}
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
-        {/* Left/Center: Player spotlight */}
+        {/* Left: Player spotlight */}
         <div className='lg:col-span-1 space-y-4'>
-          <PlayerCard player={liveAuction?.currentPlayerId} auction={liveAuction} />
+          <PlayerCard
+            player={liveAuction?.currentPlayerId}
+            auction={liveAuction}
+            soldOverlay={soldOverlay}
+          />
         </div>
 
-        {/* Right: Bid panel + history */}
+        {/* Center: Bid panel + history */}
         <div className='lg:col-span-1 space-y-4'>
           {isAdmin && liveAuction?.mode === 'offline' && (
             <OfflineBidPanel auction={liveAuction} teams={teams} />
@@ -75,7 +115,7 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
           <BidHistory history={bidHistory} auction={liveAuction} />
         </div>
 
-        {/* Right col: Admin controls + team budgets + squad panels */}
+        {/* Right: Admin controls + team budgets + squad panels */}
         <div className='lg:col-span-1 space-y-4'>
           {isAdmin && (
             <AuctionControls auction={liveAuction} onUpdate={refetch} />
@@ -94,7 +134,6 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
         </div>
       </div>
 
-      {/* RTM overlay */}
       <RTMPrompt auction={liveAuction} />
     </div>
   );
@@ -122,7 +161,11 @@ const AuctionRoomPage = () => {
   }
 
   if (!auction) {
-    return <div className='text-gray-400 text-center py-16'>Auction not found.</div>;
+    return (
+      <div className='text-center py-16' style={{ color: 'var(--color-text-muted)' }}>
+        Auction not found.
+      </div>
+    );
   }
 
   return (
