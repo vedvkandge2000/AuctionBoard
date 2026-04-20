@@ -10,7 +10,7 @@ const requireAuctionOwner = require('../utils/requireAuctionOwner');
 // ?squads=1 (admin only) — include squad with populated player docs
 const listTeams = asyncHandler(async (req, res) => {
   let query = Team.find({ auctionId: req.params.id }).populate('ownerId', 'name email');
-  if (req.query.squads === '1' && req.user.role === 'admin') {
+  if (req.query.squads === '1') {
     query = query.populate('players.playerId', 'name role category gender');
   } else {
     query = query.select('-players -releasedPlayerIds');

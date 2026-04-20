@@ -10,7 +10,7 @@ import PlayerCard from '../components/auction/PlayerCard';
 import BidPanel from '../components/auction/BidPanel';
 import OfflineBidPanel from '../components/auction/OfflineBidPanel';
 import BidHistory from '../components/auction/BidHistory';
-import TeamBudgetRail from '../components/auction/TeamBudgetRail';
+import TeamBudgetPanel from '../components/auction/TeamBudgetPanel';
 import AuctionStatusBanner from '../components/auction/AuctionStatusBanner';
 import AuctionControls from '../components/auction/AuctionControls';
 import RTMPrompt from '../components/auction/RTMPrompt';
@@ -120,7 +120,7 @@ const AuctionRoomInner = ({ initialAuction, teams = [], refetch }) => {
           {isAdmin && (
             <AuctionControls auction={liveAuction} onUpdate={refetch} />
           )}
-          <TeamBudgetRail
+          <TeamBudgetPanel
             teams={liveTeams}
             auction={liveAuction}
             myTeamId={myTeam?._id}

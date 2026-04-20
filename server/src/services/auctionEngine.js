@@ -151,15 +151,95 @@ const putNextPlayer = async (auctionId, userId) => {
 
   await BidEvent.create({ auctionId, playerId: player._id, eventType: 'player_set_live', triggeredBy: userId });
 
-  // Calculate max bid each team can place (purse minus minimum squad reservation)
-  const [teams, poolPlayers] = await Promise.all([
-    Team.find({ auctionId }).select('_id remainingPurse players').lean(),
-    Player.find({ auctionId, status: 'pool' }).select('basePrice').sort({ basePrice: 1 }).lean(),
+  // Calculate max bid each team can place — constraint-aware (overseas, gender, squad minimum)
+  //
+  // Gender inference: explicit gender field takes priority; if empty, category 'F' = female,
+  // any other non-empty category = male, unknown = null (excluded from gender counts).
+  const inferGender = (p) => {
+    if (p.gender === 'male' || p.gender === 'female') return p.gender;
+    if (p.category === 'F') return 'female';
+    if (p.category) return 'male';
+    return null;
+  };
+
+  const [teams, poolAll] = await Promise.all([
+    Team.find({ auctionId })
+      .populate('players.playerId', 'nationality gender category')
+      .select('_id remainingPurse players')
+      .lean(),
+    Player.find({ auctionId, status: 'pool' })
+      .select('_id basePrice gender category')
+      .sort({ basePrice: 1 })
+      .lean(),
   ]);
+
+  // Derive gender-specific pool lists in JS using the same inference logic
+  const poolFemale = poolAll.filter((p) => inferGender(p) === 'female');
+  const poolMale = poolAll.filter((p) => inferGender(p) === 'male');
+
+  // Minimum category base price as fallback reservation when pool is thin
+  const catPrices = Object.values(auction.categoryBasePrices || {});
+  const minCatPrice = catPrices.length > 0 ? Math.min(...catPrices) : 0;
+
+  // Infer gender of the current player using the same logic
+  const playerGender = inferGender(player);
+
   const teamMaxBids = {};
   for (const team of teams) {
-    const slotsNeeded = Math.max(0, auction.minSquadSize - team.players.length - 1);
-    const reserved = poolPlayers.slice(0, slotsNeeded).reduce((s, p) => s + p.basePrice, 0);
+    const squadPlayers = team.players.map((e) => e.playerId).filter(Boolean);
+    const overseasCount = squadPlayers.filter((p) => p.nationality === 'overseas').length;
+    const maleCount = squadPlayers.filter((p) => inferGender(p) === 'male').length;
+    const femaleCount = squadPlayers.filter((p) => inferGender(p) === 'female').length;
+
+    // Hard block: team is at overseas limit and current player is overseas
+    if (player.nationality === 'overseas' && auction.maxOverseasPlayers > 0 && overseasCount >= auction.maxOverseasPlayers) {
+      teamMaxBids[team._id.toString()] = 0;
+      continue;
+    }
+
+    // State after hypothetically acquiring current player
+    const newSize = team.players.length + 1;
+    const newMale = maleCount + (playerGender === 'male' ? 1 : 0);
+    const newFemale = femaleCount + (playerGender === 'female' ? 1 : 0);
+
+    const remainingSlots = Math.max(0, (auction.minSquadSize || 0) - newSize);
+    const maleStillNeeded = Math.max(0, (auction.minMalePlayers || 0) - newMale);
+    const femaleStillNeeded = Math.max(0, (auction.minFemalePlayers || 0) - newFemale);
+    const neutralNeeded = Math.max(0, remainingSlots - maleStillNeeded - femaleStillNeeded);
+
+    let reserved = 0;
+    const usedIds = new Set();
+
+    // Reserve for female-specific slots
+    let femaleReserved = 0;
+    for (const p of poolFemale) {
+      if (femaleReserved >= femaleStillNeeded) break;
+      usedIds.add(p._id.toString());
+      reserved += p.basePrice;
+      femaleReserved++;
+    }
+    reserved += (femaleStillNeeded - femaleReserved) * minCatPrice;
+
+    // Reserve for male-specific slots
+    let maleReserved = 0;
+    for (const p of poolMale) {
+      if (maleReserved >= maleStillNeeded) break;
+      if (usedIds.has(p._id.toString())) continue;
+      usedIds.add(p._id.toString());
+      reserved += p.basePrice;
+      maleReserved++;
+    }
+    reserved += (maleStillNeeded - maleReserved) * minCatPrice;
+
+    // Reserve for neutral (any gender) slots from cheapest remaining pool players
+    let neutralReserved = 0;
+    for (const p of poolAll) {
+      if (neutralReserved >= neutralNeeded) break;
+      if (usedIds.has(p._id.toString())) continue;
+      reserved += p.basePrice;
+      neutralReserved++;
+    }
+
     teamMaxBids[team._id.toString()] = Math.max(0, team.remainingPurse - reserved);
   }
 
